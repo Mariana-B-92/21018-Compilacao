@@ -2,6 +2,9 @@
 
 **UAb 2024/2025 – Unidade Curricular de Compilação**  
 
+<img width="1024" height="1024" alt="logo" src="https://github.com/user-attachments/assets/dc6dc0f6-ef6b-4fa8-8a2e-ee60c5c5f3d6" />
+
+
 Este projeto tem como objetivo o desenvolvimento de um compilador para a linguagem **MOCP (My Own Compiler Project)**, uma linguagem fictícia inspirada em C. A gramática foi simplificada e adaptada para fins didáticos, permitindo explorar conceitos de análise léxica e sintática.
 
 ---
