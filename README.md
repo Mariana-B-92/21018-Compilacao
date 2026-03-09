@@ -87,5 +87,5 @@ antlr4 -Dlanguage=Python3 -visitor MOCP.g4
 ---
 
 ## Autores
-- Undefined Behaviour - Mariana Barrote - 2200640 / Rui Correia - 2102862
+- Undefined Behaviour Team 1- Mariana Barrote - 2200640 / Rui Correia - 2102862
 - UC de Compilação - Universidade Aberta, 2025/2026
