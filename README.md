@@ -28,9 +28,9 @@ Este repositório inclui:
 
 ```text
 MOCP/
-├── MOC.g4               # Gramática da linguagem MOCP em ANTLR4
+├── MOCP.g4              # Gramática da linguagem MOCP em ANTLR4
 ├── main.py              # Script principal para execução e análise
-├── Exemplos_Teste/      # Diretório com exemplos de programas MOCP
+├── Testes/              # Diretório com exemplos de programas MOCP
 └── README.md            # Documentação do projeto
 ```
 
