@@ -1,49 +1,88 @@
-*MOCP - My Own Compiler Project
+# MOCP - My Own Compiler Project
 
+**UAb 2024/2025 – Unidade Curricular de Compilação**  
 
-UAb 2024/2025 – Unidade Curricular de Compilação
+Este projeto tem como objetivo o desenvolvimento de um compilador para a linguagem **MOCP (My Own Compiler Project)**, uma linguagem fictícia inspirada em C. A gramática foi simplificada e adaptada para fins didáticos, permitindo explorar conceitos de análise léxica e sintática.
 
-Este projeto tem como objetivo o desenvolvimento de um compilador para a linguagem MOCP (My Own Compiler Project), uma linguagem fictícia inspirada em C, cuja gramática foi simplificada e adaptada para fins didáticos e de análise de compiladores.
+---
 
-*Introdução
-A linguagem MOC foi concebida com o propósito de facilitar o estudo e a experimentação dos conceitos de análise léxica e sintática, recorrendo a ferramentas como o ANTLR4. Este repositório disponibiliza a gramática completa desenvolvida em ANTLR, bem como os scripts necessários para a compilação, análise e validação de programas escritos nesta linguagem.
+## 📘 Introdução
 
-|Requisitos recomendados:
+A linguagem **MOCP** foi concebida para facilitar o estudo e a experimentação de conceitos de compilação, utilizando ferramentas como o **ANTLR4**.  
 
-||Python 3.10 ou superior
-||ANTLR versão 4.13.2
-||Sistema com Java instalado (necessário para o ANTLR)
+Este repositório inclui:  
+- A gramática completa da linguagem em ANTLR4 (`MOC.g4`)  
+- Scripts para compilação, análise e validação de programas escritos em MOCP  
 
-*Estrutura do Projeto
+---
 
-*Como executar
-Instalar o Python
-Este projeto requer Python 3.10 ou superior.
+## 🛠 Requisitos
 
-Windows
-Vá a https://www.python.org/downloads/windows/
-Clique em “Download Python 3.X”
-Durante a instalação, ative a opção Add Python to PATH
-Verificar a instalação:
+- **Python 3.10 ou superior**  
+- **ANTLR versão 4.13.2**  
+- **Java instalado** (necessário para executar o ANTLR)  
+
+---
+
+## 📂 Estrutura do Projeto
+
+```text
+MOCP/
+├── MOC.g4               # Gramática da linguagem MOCP em ANTLR4
+├── main.py              # Script principal para execução e análise
+├── Exemplos_Teste/      # Diretório com exemplos de programas MOCP
+└── README.md            # Documentação do projeto
+```
+
+---
+## 🚀 Como Executar
+
+### 1️⃣ Instalar Python
+
+**Windows:**  
+1. Aceder a https://www.python.org/downloads/windows/ 
+2. Clique em “Download Python 3.X”  
+3. Durante a instalação, ative **Add Python to PATH**  
+4. Verificar a instalação:  
+```bash
 python --version
+```
 
-*Terminal recomendado: Git Bash
-Para que o comando main.py -tree funcione corretamente no Windows, é necessário usar um terminal compatível com comandos Unix, como cat. O terminal Git Bash é a forma mais simples de garantir essa compatibilidade.
+---
 
-Como instalar o Git Bash:
-Vá a: https://git-scm.com/download/win
-Faça o download do executável para Windows mais recente
-Durante a instalação, pode aceitar todas as opções por defeito
-Após a instalação, abra o Git Bash (procure "Git Bash" no menu Iniciar, ou altere o tipo de terminal no IDE que está a usar)
-Como utilizar:
+## 2️⃣ Terminal recomendado: Git Bash
+Para que o comando main.py -tree funcione corretamente no Windows, recomenda-se o uso de um terminal compatível com comandos Unix, como o Git Bash.
+
+**Instalação**
+1. Aceder a  https://git-scm.com/download/wi
+2. Transferir o executável mais recente
+3. Aceitar todas as opções por defeito
+4. Abrir o Git Bash no menu iniciar ou configurar no IDE
+
+**Como utilizar**
 No Git Bash, pode executar os comandos do projeto normalmente. Exemplo:
+```bash
+python3 main.py Teste/teste1.txt -tree
+```
 
-python3 main.py Exemplos_Teste/teste1.txt -tree
+---
 
-*Preparar ambiente
-Instale o ANTLR4 e adicione ao PATH (ver instruções em: https://github.com/antlr/antlr4)
-Instale dependências:
+## 3️⃣ Preparar o ambiente
+1. Instale o ANTLR4 e adicione ao PATH (ver instruções em: https://github.com/antlr/antlr4)
+2. Instale dependências:
+```bash
 pip install antlr4-python3-runtime
+```
 
-*Compilar
-antlr4 -Dlanguage=Python3 -visitor MOC.g4
+---
+
+## 4️⃣ Compilar a gramática
+```bash
+antlr4 -Dlanguage=Python3 -visitor MOCP.g4
+```
+
+---
+
+## Autores
+. Undefined Behaviour - Mariana Barrote - 2200640 / Rui Correia - 2102862
+. UC de Compilação - Universidade Aberta, 2025/2026
