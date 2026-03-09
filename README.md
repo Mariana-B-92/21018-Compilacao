@@ -14,7 +14,7 @@ Este projeto tem como objetivo o desenvolvimento de um compilador para a linguag
 A linguagem **MOCP** foi concebida para facilitar o estudo e a experimentação de conceitos de compilação, utilizando ferramentas como o **ANTLR4**.  
 
 Este repositório inclui:  
-- A gramática completa da linguagem em ANTLR4 (`MOC.g4`)  
+- A gramática completa da linguagem em ANTLR4 (`MOCP.g4`)  
 - Scripts para compilação, análise e validação de programas escritos em MOCP  
 
 ---
