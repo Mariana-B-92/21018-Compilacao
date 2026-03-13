@@ -44,14 +44,13 @@ MOCP/
 
 **Windows:**
 1. Verifique se o Python 3 está instalado:
-2.
 ```bash
 python --version
 ```
-3. Caso não esteja, aceder a https://www.python.org/downloads/windows/ 
-2. Clique em “Download Python 3.X”  
-3. Durante a instalação, ative **Add Python to PATH**  
-4. Verificar a instalação:  
+2. Caso não esteja, aceder a https://www.python.org/downloads/windows/ 
+3. Clique em “Download Python 3.X”  
+4. Durante a instalação, ative **Add Python to PATH**  
+5. Verificar a instalação:  
 ```bash
 python --version
 ```
