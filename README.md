@@ -57,7 +57,7 @@ python --version
 Para que o comando main.py -tree funcione corretamente no Windows, recomenda-se o uso de um terminal compatível com comandos Unix, como o Git Bash.
 
 **Instalação**
-1. Aceder a  https://git-scm.com/download/wi
+1. Aceder a https://github.com/git-for-windows/git/releases/download/v2.53.0.windows.2/Git-2.53.0.2-64-bit.exe
 2. Transferir o executável mais recente
 3. Aceitar todas as opções por defeito
 4. Abrir o Git Bash no menu iniciar ou configurar no IDE
