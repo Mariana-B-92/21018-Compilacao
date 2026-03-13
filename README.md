@@ -42,8 +42,13 @@ MOCP/
 
 ### 1️⃣ Instalar Python
 
-**Windows:**  
-1. Aceder a https://www.python.org/downloads/windows/ 
+**Windows:**
+1. Verifique se o Python 3 está instalado:
+2.
+```bash
+python --version
+```
+3. Caso não esteja, aceder a https://www.python.org/downloads/windows/ 
 2. Clique em “Download Python 3.X”  
 3. Durante a instalação, ative **Add Python to PATH**  
 4. Verificar a instalação:  
@@ -51,32 +56,49 @@ MOCP/
 python --version
 ```
 
+**Linux/Mac:**
+1. Verifique se o Python 3 está instalado:
+2.
+```bash
+python --version
+```
+3. Caso não esteja, use o gestor de pacotes da sua distribuição
+```bash
+sudo apt install python3
+```
+ou
+```bash
+brew install python3
+```
+
 ---
 
-## 2️⃣ Terminal recomendado: Git Bash
-Para que o comando main.py -tree funcione corretamente no Windows, recomenda-se o uso de um terminal compatível com comandos Unix, como o Git Bash.
+## 2️⃣ Terminal:
+O script main.py funciona em qualquer sistema operativo:
 
-**Instalação**
-1. Aceder a https://git-scm.com/install/windows
-2. Transferir o executável mais recente
-3. Aceitar todas as opções por defeito
-4. Abrir o Git Bash no menu iniciar ou configurar no IDE
+Windows: CMD, PowerShell ou Git Bash
+
+Linux/Mac: terminal nativo
+
+o script detecta o SO automaticamente.
+
 
 **Como utilizar**
-No Git Bash, pode executar os comandos do projeto normalmente. Exemplo:
+# Para gerar a árvore textual
 ```bash
 python3 main.py Teste/teste1.txt -tree
 ```
-
+# Para abrir a GUI da árvore
 ```bash
 python3 main.py Teste/teste1.txt -gui
 ```
+⚠️ Certifique-se de que o ANTLR4 está instalado e o antlr4-parse está no PATH.
 
 ---
 
 ## 3️⃣ Preparar o ambiente
 1. Instale o ANTLR4 e adicione ao PATH (ver instruções em: https://github.com/antlr/antlr4)
-2. Instale dependências:
+2. Instale a runtime Python do ANTLR4:
 ```bash
 pip install antlr4-python3-runtime
 ```
