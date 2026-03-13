@@ -57,11 +57,10 @@ python --version
 
 **Linux/Mac:**
 1. Verifique se o Python 3 está instalado:
-2.
 ```bash
 python --version
 ```
-3. Caso não esteja, use o gestor de pacotes da sua distribuição
+2. Caso não esteja, use o gestor de pacotes da sua distribuição
 ```bash
 sudo apt install python3
 ```
@@ -73,21 +72,19 @@ brew install python3
 ---
 
 ## 2️⃣ Terminal:
-O script main.py funciona em qualquer sistema operativo:
 
-Windows: CMD, PowerShell ou Git Bash
+- Windows: CMD, PowerShell ou Git Bash
 
-Linux/Mac: terminal nativo
-
-o script detecta o SO automaticamente.
+- Linux/Mac: terminal nativo
 
 
-**Como utilizar**
-# Para gerar a árvore textual
+**Como utilizar:**
+
+Para gerar a árvore textual
 ```bash
 python3 main.py Teste/teste1.txt -tree
 ```
-# Para abrir a GUI da árvore
+Para abrir a GUI da árvore
 ```bash
 python3 main.py Teste/teste1.txt -gui
 ```
