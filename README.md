@@ -68,6 +68,10 @@ No Git Bash, pode executar os comandos do projeto normalmente. Exemplo:
 python3 main.py Teste/teste1.txt -tree
 ```
 
+```bash
+python3 main.py Teste/teste1.txt -gui
+```
+
 ---
 
 ## 3️⃣ Preparar o ambiente
