@@ -3,8 +3,7 @@ grammar MOCP;
 /* =========================
  * LEXER
  * =========================
- * Define os tokens da linguagem MOCP.
- * Todas as palavras-chave são em português.
+ * Tokens da linguagem MOCP (palavras-chave em português)
  */
 
 /* Tipos e função principal */
@@ -14,9 +13,9 @@ VAZIO     : 'vazio' ;
 PRINCIPAL : 'principal' ;
 
 /* Funções de leitura */
-LER  : 'ler' ;
-LERC : 'lerc' ;
-LERS : 'lers' ;
+LER       : 'ler' ;
+LERC      : 'lerc' ;
+LERS      : 'lers' ;
 
 /* Funções de escrita */
 ESCREVER  : 'escrever' ;
@@ -24,94 +23,82 @@ ESCREVERC : 'escreverc' ;
 ESCREVERV : 'escreverv' ;
 ESCREVERS : 'escrevers' ;
 
-/* Estruturas de controlo */
-SE       : 'se' ;
-SENAO    : 'senao' ;
-ENQUANTO : 'enquanto' ;
-PARA     : 'para' ;
-RETORNAR : 'retornar' ;
+/* Controlo */
+SE        : 'se' ;
+SENAO     : 'senao' ;
+ENQUANTO  : 'enquanto' ;
+PARA      : 'para' ;
+RETORNAR  : 'retornar' ;
 
-/* Palavras da linguagem C não permitidas em MOCP */
+/* Palavras de C proibidas */
 ERRO_PALAVRA_C
     : 'int' | 'double' | 'void' | 'main'
     | 'if' | 'else' | 'while' | 'for' | 'return'
-    | 'char' | 'float' | 'long' | 'short' | 'unsigned' | 'signed'
-    | 'struct' | 'union' | 'enum' | 'typedef' | 'sizeof'
-    | 'break' | 'continue' | 'switch' | 'case' | 'default' | 'do'
-    | 'printf' | 'scanf'
+    | 'char' | 'float' | 'long' | 'short'
+    | 'struct' | 'typedef' | 'sizeof'
     ;
 
-/* Operadores não suportados na linguagem */
+/* Operadores não permitidos */
 ERRO_OPERADORES_C
     : '++' | '--'
-    | '+=' | '-=' | '*=' | '/=' | '%='
+    | '+=' | '-=' | '*=' | '/='
     | '<<' | '>>'
-    | '->'
     ;
 
-/* Operadores aritméticos */
-MAIS   : '+' ;
-MENOS  : '-' ;
-MULT   : '*' ;
-DIV    : '/' ;
+/* Operadores */
+MAIS : '+' ;
+MENOS : '-' ;
+MULT : '*' ;
+DIV : '/' ;
 MODULO : '%' ;
 
-/* Operadores relacionais */
-MENOR       : '<' ;
-MENORIGUAL  : '<=' ;
-MAIOR       : '>' ;
-MAIORIGUAL  : '>=' ;
-IGUAL       : '==' ;
-DIFERENTE   : '!=' ;
+MENORIGUAL : '<=' ;
+MAIORIGUAL : '>=' ;
+MENOR : '<' ;
+MAIOR : '>' ;
+IGUAL : '==' ;
+DIFERENTE : '!=' ;
 
-/* Operadores lógicos */
-E_LOGICO  : '&&' ;
+E_LOGICO : '&&' ;
 OU_LOGICO : '||' ;
-NAO       : '!' ;
+NAO : '!' ;
 
 /* Símbolos */
 ATRIBUICAO : '=' ;
-VIRGULA    : ',' ;
-PONTOVIRG  : ';' ;
+VIRGULA : ',' ;
+PONTOVIRG : ';' ;
 
-ABRECOLCH   : '[' ;
-FECHACOLCH  : ']' ;
-ABRECHAVES  : '{' ;
+ABRECOLCH : '[' ;
+FECHACOLCH : ']' ;
+ABRECHAVES : '{' ;
 FECHACHAVES : '}' ;
-ABREPAR     : '(' ;
-FECHAPAR    : ')' ;
+ABREPAR : '(' ;
+FECHAPAR : ')' ;
 
 /* Literais */
 STRINGLITERAL : '"' (ESC_SEQ | ~["\\\r\n])* '"' ;
 fragment ESC_SEQ : '\\' [\\'"nrt0] ;
 
-/* Números */
 NUM_REAL : [0-9]+ '.' [0-9]+ ;
-NUMERO   : [0-9]+ ;
+NUMERO : [0-9]+ ;
 
-/* Identificadores */
 IDENTIFICADOR : [a-zA-Z_][a-zA-Z0-9_]* ;
 
-/* Comentários e espaços ignorados */
-COMENTARIO_BLOCK : '/*' .*? '*/'  -> skip ;
-COMENTARIO_LINE  : '//' ~[\r\n]*  -> skip ;
-ESPACO           : [ \t\r\n]+     -> skip ;
-
+/* Ignorar */
+COMENTARIO_BLOCK : '/*' .*? '*/' -> skip ;
+COMENTARIO_LINE  : '//' ~[\r\n]* -> skip ;
+ESPACO : [ \t\r\n]+ -> skip ;
 
 /* =========================
  * PARSER
  * =========================
  */
 
-/* estrutura global do programa */
 programa
-    : prototipos funcoes funcaoPrincipal EOF
+    : prototipo* declaracaoGlobal* funcao* funcaoPrincipal EOF
     ;
 
-/* protótipos devem aparecer antes das funções */
-prototipos
-    : prototipo*
-    ;
+/* -------- PROTÓTIPOS -------- */
 
 prototipo
     : tipoFunc IDENTIFICADOR ABREPAR parametrosProto? FECHAPAR PONTOVIRG
@@ -121,35 +108,38 @@ parametrosProto
     : parametroProto (VIRGULA parametroProto)*
     ;
 
-/* parâmetros sem nome (protótipos) */
 parametroProto
     : tipoVar (ABRECOLCH FECHACOLCH)?
     ;
 
-/* definição de funções */
-funcoes
-    : funcao*
+/* -------- DECLARAÇÕES GLOBAIS -------- */
+
+declaracaoGlobal
+    : tipoVar listaVariaveis PONTOVIRG
     ;
+
+/* -------- FUNÇÕES -------- */
 
 funcao
     : tipoFunc IDENTIFICADOR ABREPAR parametros? FECHAPAR bloco
     ;
 
+funcaoPrincipal
+    : VAZIO PRINCIPAL ABREPAR VAZIO? FECHAPAR bloco
+    ;
+
+/* Parâmetros */
+
 parametros
     : parametro (VIRGULA parametro)*
     ;
 
-/* parâmetros com nome */
 parametro
     : tipoVar IDENTIFICADOR (ABRECOLCH FECHACOLCH)?
     ;
 
-/* função principal obrigatória */
-funcaoPrincipal
-    : VAZIO PRINCIPAL ABREPAR VAZIO FECHAPAR bloco
-    ;
+/* -------- DECLARAÇÕES LOCAIS -------- */
 
-/* declaração de variáveis (simples ou vetores) */
 declaracao
     : tipoVar listaVariaveis PONTOVIRG
     ;
@@ -158,61 +148,74 @@ listaVariaveis
     : variavel (VIRGULA variavel)*
     ;
 
-/* variável:
- * - simples
- * - vetor com tamanho
- * - vetor com tamanho inferido por inicialização
- */
 variavel
-    : IDENTIFICADOR
-      ( ABRECOLCH NUMERO   FECHACOLCH inicializacao?
-      | ABRECOLCH          FECHACOLCH inicializacao
-      | inicializacao
-      )?
+    : IDENTIFICADOR varSufixo?
     ;
 
-/* inicialização com expressão, array ou leitura */
-inicializacao
-    : ATRIBUICAO (expressao | blocoArray | chamadaLeitura)
+varSufixo
+    : ABRECOLCH expressao FECHACOLCH
+    | ABRECOLCH FECHACOLCH (ATRIBUICAO inicializacaoVetor)?
+    | ATRIBUICAO inicializacaoEscalar
     ;
 
-/* inicialização de vetores com lista de valores */
-blocoArray
-    : ABRECHAVES listaValores? FECHACHAVES
+/* Inicializações */
+
+inicializacaoEscalar
+    : LER ABREPAR FECHAPAR
+    | LERC ABREPAR FECHAPAR
+    | expressao
     ;
 
-listaValores
-    : expressao (VIRGULA expressao)*
+inicializacaoVetor
+    : ABRECHAVES (expressao (VIRGULA expressao)*)? FECHACHAVES
+    | LERS ABREPAR FECHAPAR
     ;
 
-/* expressão aritmética com precedência */
+/* -------- EXPRESSÕES -------- */
+
 expressao
     : expressaoAdd
     ;
 
-/* operadores + e - */
 expressaoAdd
     : expressaoMul ((MAIS | MENOS) expressaoMul)*
     ;
 
-/* operadores *, / e % */
 expressaoMul
     : expressaoUnaria ((MULT | DIV | MODULO) expressaoUnaria)*
     ;
 
-/* operadores unários: ! e - */
 expressaoUnaria
-    : NAO   expressaoUnaria
+    : NAO expressaoUnaria
     | MENOS expressaoUnaria
-    | castExpr
+    | expressaoCast
     ;
 
-/* casting explícito (inteiro/real) */
-castExpr
-    : (ABREPAR (INTEIRO | REAL) FECHAPAR)* primary
+expressaoCast
+    : ABREPAR tipoVar FECHAPAR expressaoCast
+    | primary
     ;
 
-/* condições simplificadas conforme especificação */
+primary
+    : IDENTIFICADOR
+    | IDENTIFICADOR ABREPAR argumentos? FECHAPAR
+    | IDENTIFICADOR ABRECOLCH expressao FECHACOLCH
+    | NUM_REAL
+    | NUMERO
+    | ABREPAR expressao FECHAPAR
+    | LER ABREPAR FECHAPAR
+    | LERC ABREPAR FECHAPAR
+    | LERS ABREPAR FECHAPAR
+    ;
+
+/* Argumentos */
+
+argumentos
+    : expressao (VIRGULA expressao)*
+    ;
+
+/* -------- CONDIÇÕES -------- */
+
 condicao
     : condicaoOr
     ;
@@ -230,60 +233,22 @@ condicaoNot
     | condicaoBase
     ;
 
-/* formas permitidas:
- * - (condição)
- * - expr op expr
- * - expr
- */
 condicaoBase
     : ABREPAR condicao FECHAPAR
-    | expressao opRelacional expressao
-    | expressao
+    | expressao (opRelacional expressao)?
     ;
 
 opRelacional
     : MENOR | MENORIGUAL | MAIOR | MAIORIGUAL | IGUAL | DIFERENTE
     ;
 
-primary
-    : ABREPAR expressao FECHAPAR
-    | chamadaLeitura
-    | NUM_REAL
-    | NUMERO
-    | chamadaFuncao
-    | acessoArray
-    | IDENTIFICADOR
-    ;
+/* -------- BLOCOS -------- */
 
-/* chamada de função */
-chamadaFuncao
-    : IDENTIFICADOR ABREPAR argumentos? FECHAPAR
-    ;
-
-/* acesso a posição de vetor */
-acessoArray
-    : IDENTIFICADOR ABRECOLCH expressao FECHACOLCH
-    ;
-
-argumentos
-    : expressao (VIRGULA expressao)*
-    ;
-
-/* leitura de valores */
-chamadaLeitura
-    : LER  ABREPAR FECHAPAR
-    | LERC ABREPAR FECHAPAR
-    | LERS ABREPAR FECHAPAR
-    ;
-
-/* bloco de instruções */
 bloco
-    : ABRECHAVES instrucoes FECHACHAVES
+    : ABRECHAVES instrucao* FECHACHAVES
     ;
 
-instrucoes
-    : instrucao*
-    ;
+/* -------- INSTRUÇÕES -------- */
 
 instrucao
     : instrucaoSe
@@ -291,73 +256,60 @@ instrucao
     | instrucaoPara
     | instrucaoEscrita
     | instrucaoRetornar
-    | instrucaoAtribuicao
+    | atribuicao
     | declaracao
-    | bloco
-    | instrucaoExpressao
+    | expressao PONTOVIRG
     ;
 
-/* expressão usada como instrução */
-instrucaoExpressao
-    : expressao PONTOVIRG
+/* -------- INSTRUÇÕES SIMPLES -------- */
+
+atribuicao
+    : IDENTIFICADOR (ABRECOLCH expressao FECHACOLCH)? ATRIBUICAO expressao PONTOVIRG
     ;
 
-/* estrutura condicional (else opcional) */
+/* -------- CONTROLO -------- */
+
 instrucaoSe
     : SE ABREPAR condicao FECHAPAR bloco (SENAO bloco)?
     ;
 
-/* ciclo enquanto */
 instrucaoEnquanto
     : ENQUANTO ABREPAR condicao FECHAPAR bloco
     ;
 
-/* ciclo para com sintaxe simplificada */
 instrucaoPara
     : PARA ABREPAR
-        inicializacaoPara? PONTOVIRG
-        condicao           PONTOVIRG
-        incrementoPara?
+        atribuicaoPara? PONTOVIRG
+        condicao? PONTOVIRG
+        atribuicaoPara?
       FECHAPAR bloco
     ;
 
-inicializacaoPara
-    : IDENTIFICADOR ATRIBUICAO expressao
+atribuicaoPara
+    : IDENTIFICADOR (ABRECOLCH expressao FECHACOLCH)? ATRIBUICAO expressao
     ;
 
-incrementoPara
-    : IDENTIFICADOR ATRIBUICAO expressao
-    ;
+/* -------- ESCRITA -------- */
 
-/* instruções de escrita */
 instrucaoEscrita
-    : ESCREVER  ABREPAR expressao      FECHAPAR PONTOVIRG
-    | ESCREVERC ABREPAR expressao      FECHAPAR PONTOVIRG
-    | ESCREVERV ABREPAR IDENTIFICADOR  FECHAPAR PONTOVIRG
+    : ESCREVER  ABREPAR expressao FECHAPAR PONTOVIRG
+    | ESCREVERC ABREPAR expressao FECHAPAR PONTOVIRG
+    | ESCREVERV ABREPAR IDENTIFICADOR FECHAPAR PONTOVIRG
     | ESCREVERS ABREPAR argumentoString FECHAPAR PONTOVIRG
     ;
 
-instrucaoRetornar
-    : RETORNAR expressao? PONTOVIRG
-    ;
-
-/* atribuição a variável ou posição de vetor */
-instrucaoAtribuicao
-    : alvo ATRIBUICAO expressao PONTOVIRG
-    ;
-
-alvo
-    : IDENTIFICADOR
-    | IDENTIFICADOR ABRECOLCH expressao FECHACOLCH
-    ;
-
-/* argumento pode ser variável (vetor) ou string literal */
 argumentoString
     : IDENTIFICADOR
     | STRINGLITERAL
     ;
 
-/* tipos disponíveis */
+/* -------- RETURN -------- */
+
+instrucaoRetornar
+    : RETORNAR expressao? PONTOVIRG
+    ;
+
+/* -------- TIPOS -------- */
+
 tipoVar  : INTEIRO | REAL ;
 tipoFunc : INTEIRO | REAL | VAZIO ;
-
