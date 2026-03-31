@@ -1,92 +1,83 @@
 grammar MOCP;
 
-/* =========================
- * LEXER
- * =========================
- * Tokens da linguagem MOCP (palavras-chave em português)
+/*
+ * ----------------------------
+ * LEXER RULES (tokens básicos)
+ * ----------------------------
  */
 
-/* Tipos e função principal */
-INTEIRO   : 'inteiro' ;
-REAL      : 'real' ;
-VAZIO     : 'vazio' ;
-PRINCIPAL : 'principal' ;
+// Tipos de dados suportados
+INTEIRO : 'inteiro' ;        // tipo inteiro
+REAL    : 'real' ;           // tipo real (ponto flutuante)
+VAZIO   : 'vazio' ;          // ausência de valor de retorno
 
-/* Funções de leitura */
-LER       : 'ler' ;
-LERC      : 'lerc' ;
-LERS      : 'lers' ;
+// Função de entrada do programa
+PRINCIPAL : 'principal' ;    // equivalente a 'main'
 
-/* Funções de escrita */
-ESCREVER  : 'escrever' ;
-ESCREVERC : 'escreverc' ;
-ESCREVERV : 'escreverv' ;
-ESCREVERS : 'escrevers' ;
+// Funções de leitura (input)
+LER    : 'ler' ;             // leitura numérica (inteiro ou real)
+LERC   : 'lerc' ;            // leitura de um caráter (ASCII)
+LERS   : 'lers' ;            // leitura de string (terminada em 0)
 
-/* Controlo */
-SE        : 'se' ;
-SENAO     : 'senao' ;
-ENQUANTO  : 'enquanto' ;
-PARA      : 'para' ;
-RETORNAR  : 'retornar' ;
+// Funções de escrita (output)
+ESCREVER   : 'escrever' ;    // escrita numérica
+ESCREVERC  : 'escreverc' ;   // escrita de caráter
+ESCREVERV  : 'escreverv' ;   // escrita de vetor
+ESCREVERS  : 'escrevers' ;   // escrita de string
 
-/* Palavras de C proibidas */
-ERRO_PALAVRA_C
-    : 'int' | 'double' | 'void' | 'main'
-    | 'if' | 'else' | 'while' | 'for' | 'return'
-    | 'char' | 'float' | 'long' | 'short'
-    | 'struct' | 'typedef' | 'sizeof'
-    ;
+// Estruturas de controlo
+SE      : 'se' ;
+SENAO   : 'senao' ;
+ENQUANTO: 'enquanto' ;
+PARA    : 'para' ;
 
-/* Operadores não permitidos */
-ERRO_OPERADORES_C
-    : '++' | '--'
-    | '+=' | '-=' | '*=' | '/='
-    | '<<' | '>>'
-    ;
+// Operadores aritméticos
+MAIS    : '+' ;
+MENOS   : '-' ;
+MULT    : '*' ;
+DIV     : '/' ;
+MODULO  : '%' ;
 
-/* Operadores */
-MAIS : '+' ;
-MENOS : '-' ;
-MULT : '*' ;
-DIV : '/' ;
-MODULO : '%' ;
+// Operadores relacionais
+MENOR       : '<' ;
+MENORIGUAL  : '<=' ;
+MAIOR       : '>' ;
+MAIORIGUAL  : '>=' ;
+IGUAL       : '==' ;
+DIFERENTE   : '!=' ;
 
-MENORIGUAL : '<=' ;
-MAIORIGUAL : '>=' ;
-MENOR : '<' ;
-MAIOR : '>' ;
-IGUAL : '==' ;
-DIFERENTE : '!=' ;
+// Operadores lógicos
+E_LOGICO    : '&&' ;
+OU_LOGICO   : '||' ;
+NAO         : '!' ;
 
-E_LOGICO : '&&' ;
-OU_LOGICO : '||' ;
-NAO : '!' ;
+// Símbolos e pontuação
+ATRIBUICAO   : '=' ;
+VIRGULA      : ',' ;
+PONTOVIRG    : ';' ;
+ABRECOLCH    : '[' ;
+FECHACOLCH   : ']' ;
+ABRECHAVES   : '{' ;
+FECHACHAVES  : '}' ;
+ABREPAR      : '(' ;
+FECHAPAR     : ')' ;
 
-/* Símbolos */
-ATRIBUICAO : '=' ;
-VIRGULA : ',' ;
-PONTOVIRG : ';' ;
+// Palavra-chave de retorno
+RETORNAR : 'retornar' ;
 
-ABRECOLCH : '[' ;
-FECHACOLCH : ']' ;
-ABRECHAVES : '{' ;
-FECHACHAVES : '}' ;
-ABREPAR : '(' ;
-FECHAPAR : ')' ;
+// String literal (usada em escrevers)
+STRINGLITERAL : '"' (~["\r\n])* '"' ;
 
-/* Literais */
-STRINGLITERAL : '"' (ESC_SEQ | ~["\\\r\n])* '"' ;
-fragment ESC_SEQ : '\\' [\\'"nrt0] ;
+// Comentários ignorados pelo parser
+COMENTARIO_BLOCK : '/*' .*? '*/' -> skip ; // comentário multi-linha
+COMENTARIO_LINE  : '//' ~[\r\n]* -> skip ; // comentário de linha
 
-NUM_REAL : [0-9]+ '.' [0-9]+ ;
-NUMERO : [0-9]+ ;
+// Literais e identificadores
+NUM_REAL : [0-9]+ '.' [0-9]+ ;             // número real
+NUMERO   : [0-9]+ ;                        // número inteiro
+IDENTIFICADOR : [a-zA-Z_][a-zA-Z0-9_]* ;   // identificador válido
 
-IDENTIFICADOR : [a-zA-Z_][a-zA-Z0-9_]* ;
-
-/* Ignorar */
-COMENTARIO_BLOCK : '/*' .*? '*/' -> skip ;
-COMENTARIO_LINE  : '//' ~[\r\n]* -> skip ;
+// Espaços ignorados
 ESPACO : [ \t\r\n]+ -> skip ;
 
 /* =========================
