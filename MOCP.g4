@@ -3,64 +3,60 @@ grammar MOCP;
 /* =========================
  * LEXER
  * =========================
+ * Define os tokens da linguagem MOCP.
+ * Todas as palavras-chave são em português.
  */
 
-/* PALAVRAS-CHAVE DA LINGUAGEM */
+/* Tipos e função principal */
 INTEIRO   : 'inteiro' ;
 REAL      : 'real' ;
 VAZIO     : 'vazio' ;
-
 PRINCIPAL : 'principal' ;
 
-/* FUNÇÕES DE LEITURA */
+/* Funções de leitura */
 LER  : 'ler' ;
 LERC : 'lerc' ;
 LERS : 'lers' ;
 
-/* FUNÇÕES DE ESCRITA */
+/* Funções de escrita */
 ESCREVER  : 'escrever' ;
 ESCREVERC : 'escreverc' ;
 ESCREVERV : 'escreverv' ;
 ESCREVERS : 'escrevers' ;
 
-/* ESTRUTURAS DE CONTROLO */
+/* Estruturas de controlo */
 SE       : 'se' ;
 SENAO    : 'senao' ;
 ENQUANTO : 'enquanto' ;
 PARA     : 'para' ;
 RETORNAR : 'retornar' ;
 
-/* PALAVRAS RESERVADAS DE C NÃO PERMITIDAS EM MOCP */
+/* Palavras da linguagem C não permitidas em MOCP */
 ERRO_PALAVRA_C
     : 'int' | 'double' | 'void' | 'main'
     | 'if' | 'else' | 'while' | 'for' | 'return'
     | 'char' | 'float' | 'long' | 'short' | 'unsigned' | 'signed'
     | 'struct' | 'union' | 'enum' | 'typedef' | 'sizeof'
     | 'break' | 'continue' | 'switch' | 'case' | 'default' | 'do'
-    | 'printf' | 'scanf' | 'fprintf' | 'fscanf'
-    | 'malloc' | 'free' | 'NULL' | 'null'
-    | 'include' | 'define'
-    { throw new RuntimeException("Uso de palavra reservada de C não permitido: " + getText()); }
+    | 'printf' | 'scanf'
     ;
 
-/* OPERADORES DE C NÃO PERMITIDOS EM MOCP */
+/* Operadores não suportados na linguagem */
 ERRO_OPERADORES_C
     : '++' | '--'
     | '+=' | '-=' | '*=' | '/=' | '%='
-    | '&=' | '|=' | '^=' | '<<=' | '>>='
     | '<<' | '>>'
-    | '->'  | '.'
-    { throw new RuntimeException("Operador não permitido em MOCP: " + getText()); }
+    | '->'
     ;
 
-/* OPERADORES ARITMÉTICOS */
+/* Operadores aritméticos */
 MAIS   : '+' ;
 MENOS  : '-' ;
 MULT   : '*' ;
 DIV    : '/' ;
 MODULO : '%' ;
 
-/* OPERADORES RELACIONAIS */
+/* Operadores relacionais */
 MENOR       : '<' ;
 MENORIGUAL  : '<=' ;
 MAIOR       : '>' ;
@@ -68,17 +64,16 @@ MAIORIGUAL  : '>=' ;
 IGUAL       : '==' ;
 DIFERENTE   : '!=' ;
 
-/* OPERADORES LÓGICOS */
+/* Operadores lógicos */
 E_LOGICO  : '&&' ;
 OU_LOGICO : '||' ;
 NAO       : '!' ;
 
-/* PONTUAÇÃO */
+/* Símbolos */
 ATRIBUICAO : '=' ;
 VIRGULA    : ',' ;
 PONTOVIRG  : ';' ;
 
-/* DELIMITADORES */
 ABRECOLCH   : '[' ;
 FECHACOLCH  : ']' ;
 ABRECHAVES  : '{' ;
@@ -86,18 +81,19 @@ FECHACHAVES : '}' ;
 ABREPAR     : '(' ;
 FECHAPAR    : ')' ;
 
-/* LITERAIS */
+/* Literais */
 STRINGLITERAL : '"' (ESC_SEQ | ~["\\\r\n])* '"' ;
-fragment ESC_SEQ : '\\' [\\'"nrt0] ; /* sequências de escape suportadas */
+fragment ESC_SEQ : '\\' [\\'"nrt0] ;
 
+/* Números */
 NUM_REAL : [0-9]+ '.' [0-9]+ ;
 NUMERO   : [0-9]+ ;
 
-/* IDENTIFICADORES */
+/* Identificadores */
 IDENTIFICADOR : [a-zA-Z_][a-zA-Z0-9_]* ;
 
-/* ELEMENTOS IGNORADOS */
-COMENTARIO_BLOCK : '/*' .*? '*/' -> skip ;
+/* Comentários e espaços ignorados */
+COMENTARIO_BLOCK : '/*' .*? '*/'  -> skip ;
 COMENTARIO_LINE  : '//' ~[\r\n]*  -> skip ;
 ESPACO           : [ \t\r\n]+     -> skip ;
 
