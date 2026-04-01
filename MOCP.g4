@@ -1,23 +1,30 @@
 grammar MOCP;
 
 /*
- * ----------------------------
- * LEXER RULES (tokens básicos)
- * ----------------------------
+ * -----------
+ * LEXER RULES
+ * -----------
  */
 
 // Tipos de dados suportados
 INTEIRO : 'inteiro' ;        // tipo inteiro
-REAL    : 'real' ;           // tipo real (ponto flutuante)
-VAZIO   : 'vazio' ;          // ausência de valor de retorno
+REAL    : 'real' ;           // tipo real
+VAZIO   : 'vazio' ;          // ausência de valor
 
 // Função de entrada do programa
 PRINCIPAL : 'principal' ;    // equivalente a 'main'
 
+// Estruturas de controlo
+SE      : 'se' ;             // condicional
+SENAO   : 'senao' ;          // alternativa
+ENQUANTO: 'enquanto' ;       // ciclo while
+PARA    : 'para' ;           // ciclo for
+RETORNAR: 'retornar' ;       // retorno de função
+
 // Funções de leitura (input)
-LER    : 'ler' ;             // leitura numérica (inteiro ou real)
-LERC   : 'lerc' ;            // leitura de um caráter (ASCII)
-LERS   : 'lers' ;            // leitura de string (terminada em 0)
+LER    : 'ler' ;             // leitura numérica
+LERC   : 'lerc' ;            // leitura de caráter (ASCII)
+LERS   : 'lers' ;            // leitura de string como vetor de inteiros (ASCII, terminada em 0)
 
 // Funções de escrita (output)
 ESCREVER   : 'escrever' ;    // escrita numérica
@@ -25,13 +32,7 @@ ESCREVERC  : 'escreverc' ;   // escrita de caráter
 ESCREVERV  : 'escreverv' ;   // escrita de vetor
 ESCREVERS  : 'escrevers' ;   // escrita de string
 
-// Estruturas de controlo
-SE      : 'se' ;
-SENAO   : 'senao' ;
-ENQUANTO: 'enquanto' ;
-PARA    : 'para' ;
-
-// Operadores aritméticos
+// Operadores aritméticos suportados (subconjunto de C)
 MAIS    : '+' ;
 MENOS   : '-' ;
 MULT    : '*' ;
@@ -62,23 +63,16 @@ FECHACHAVES  : '}' ;
 ABREPAR      : '(' ;
 FECHAPAR     : ')' ;
 
-// Palavra-chave de retorno
-RETORNAR : 'retornar' ;
-
-// String literal (usada em escrevers)
-STRINGLITERAL : '"' (~["\r\n])* '"' ;
-
-// Comentários ignorados pelo parser
-COMENTARIO_BLOCK : '/*' .*? '*/' -> skip ; // comentário multi-linha
-COMENTARIO_LINE  : '//' ~[\r\n]* -> skip ; // comentário de linha
-
 // Literais e identificadores
-NUM_REAL : [0-9]+ '.' [0-9]+ ;             // número real
-NUMERO   : [0-9]+ ;                        // número inteiro
-IDENTIFICADOR : [a-zA-Z_][a-zA-Z0-9_]* ;   // identificador válido
+STRINGLITERAL : '"' ( '\\' . | ~["\\\r\n] )* '"' ;  // string literal com escapes
+NUM_REAL      : [0-9]+ '.' [0-9]+ ;                 // literal real
+NUMERO        : [0-9]+ ;                            // literal inteiro
+IDENTIFICADOR : [a-zA-Z_][a-zA-Z0-9_]* ;            // identificador válido
 
-// Espaços ignorados
-ESPACO : [ \t\r\n]+ -> skip ;
+// Elementos ignorados
+COMENTARIO_BLOCK : '/*' .*? '*/' -> skip ;          // comentário multi-linha
+COMENTARIO_LINE  : '//' ~[\r\n]* -> skip ;          // comentário de linha
+ESPACO : [ \t\r\n]+ -> skip ;                       // whitespace
 
 /* =========================
  * PARSER
