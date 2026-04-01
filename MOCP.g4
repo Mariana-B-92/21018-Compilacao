@@ -164,6 +164,8 @@ listaVariaveis
  * - escalar simples (com ou sem inicialização)
  * - vetor com tamanho fixo
  * - vetor com inferência via inicialização (lista ou leitura com lers)
+ * Nota: lers() tem alternativa explícita pois infere o tamanho do vetor;
+ * ler() e lerc() são tratados como expressões normais via chamadaFuncao.
  */
 variavel
     : IDENTIFICADOR
