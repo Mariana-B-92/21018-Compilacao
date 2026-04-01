@@ -32,6 +32,7 @@ Este repositório inclui:
 ```text
 MOCP/
 ├── MOCP.g4              # Gramática da linguagem MOCP em ANTLR4
+├── MOCPErrorListener.py # Intercepta e traduz erros do ANTLR4 em mensagens amigáveis para MOCP.
 ├── main.py              # Script principal para execução e análise
 ├── Testes/              # Diretório com exemplos de programas MOCP
 └── README.md            # Documentação do projeto
