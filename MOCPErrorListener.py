@@ -37,7 +37,7 @@ class MOCPErrorListener(ErrorListener):
         'write': 'escrever',
         'writec': 'escreverc',
         'writev': 'escreverv',
-        'writes': 'escrever s'
+        'writes': 'escrevers'
     }
 
     def __init__(self):
@@ -62,7 +62,7 @@ class MOCPErrorListener(ErrorListener):
 
         # Detecta operadores proibidos em MOCP
         for op in self.OPERADORES_PROIBIDOS:
-            if op in msg or simbolo == op:
+            if simbolo == op:
                 mensagem = f"[Erro Sintático] Operador '{op}' não é suportado na MOCP (linha {line}, coluna {column})."
                 self._registar(mensagem)
                 return
