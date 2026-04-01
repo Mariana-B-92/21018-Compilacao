@@ -30,7 +30,14 @@ class MOCPErrorListener(ErrorListener):
         'else': 'senao',
         'while': 'enquanto',
         'for': 'para',
-        'return': 'retornar'
+        'return': 'retornar',
+        'read': 'ler',
+        'readc': 'lerc',
+        'reads': 'lers',
+        'write': 'escrever',
+        'writec': 'escreverc',
+        'writev': 'escreverv',
+        'writes': 'escrever s'
     }
 
     def __init__(self):
