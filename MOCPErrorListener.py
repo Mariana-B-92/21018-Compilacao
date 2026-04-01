@@ -8,8 +8,8 @@ class MOCPErrorListener(ErrorListener):
     # Palavras-chave da linguagem C que não são suportadas em MOCP
     PALAVRAS_C_PROIBIDAS = {
         'int', 'double', 'void', 'main', 'if', 'else', 'while', 'for', 'return',
-        'char', 'short', 'long', 'float', 'unsigned', 'signed',
-        'struct', 'union', 'enum', 'typedef',
+        'char', 'short', 'long', 'float', 'read', 'write', 'unsigned', 'signed',
+        'struct', 'union', 'enum', 'typedef', 'sizeof', 'printf',
         'switch', 'case', 'default', 'break', 'continue', 'goto',
         'static', 'extern', 'register', 'auto', 'const', 'volatile'
     }
