@@ -267,6 +267,7 @@ primary
     | IDENTIFICADOR ABRECOLCH expressao FECHACOLCH
     | NUMERO
     | NUM_REAL
+    | STRINGLITERAL
     ;
 
 /* Chamadas de função:
