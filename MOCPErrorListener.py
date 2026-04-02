@@ -120,7 +120,6 @@ class MOCPErrorListener(ErrorListener):
         Regista a mensagem de erro na lista de erros internos e imprime-a.
         """
         self.erros.append(mensagem)
-        print(mensagem)
 
 
 # -------------------------------
