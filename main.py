@@ -48,10 +48,10 @@ def main():
 
     # Se houver erros sintáticos/léxicos
     if listener.erros:
-    print("\nErros encontrados:")
-    for erro in listener.erros:
-        print(erro)
-    return
+        print("\nErros encontrados:")
+        for erro in listener.erros:
+            print(erro)
+        return
 
     # Análise semântica
     # semantic = SemanticAnalyzer()
