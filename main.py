@@ -1,5 +1,3 @@
-# main.py
-
 import sys
 import subprocess
 from antlr4 import *
