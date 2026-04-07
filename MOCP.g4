@@ -6,158 +6,159 @@ grammar MOCP;
  * -----------
  */
 
-// Tipos de dados suportados
-INTEIRO : 'inteiro' ;        // tipo inteiro
-REAL    : 'real' ;           // tipo real
-VAZIO   : 'vazio' ;          // ausência de valor
+// Tipos de dados suportados:
+INT     :   'inteiro'   ;   // Tipo inteiro.
+FLOAT   :   'real'      ;   // Tipo real.
+VOID    :   'vazio'     ;   // Ausência de valor.
 
-// Função de entrada do programa
-PRINCIPAL : 'principal' ;    // equivalente a 'main'
+// Função de entrada do programa:
+MAIN    :   'principal' ;
 
-// Estruturas de controlo
-SE      : 'se' ;             // condicional
-SENAO   : 'senao' ;          // alternativa
-ENQUANTO: 'enquanto' ;       // ciclo while
-PARA    : 'para' ;           // ciclo for
-RETORNAR: 'retornar' ;       // retorno de função
+// Estruturas de controlo:
+IF      :   'se'        ;   // Condicional.
+ELSE    :   'senao'     ;   // Alternativa.
+WHILE   :   'enquanto'  ;   // Ciclo while.
+FOR     :   'para'      ;   // Ciclo for.
+RETURN  :   'retornar'  ;   // Retorno de função.
 
-// Funções de leitura (input)
-LER    : 'ler' ;             // leitura numérica
-LERC   : 'lerc' ;            // leitura de caráter (ASCII)
-LERS   : 'lers' ;            // leitura de string como vetor de inteiros (ASCII, terminada em 0)
+// Funções de leitura (input):
+READ    :   'ler'   ;   // Leitura numérica.
+READC   :   'lerc'  ;   // Leitura de caráter (ASCII).
+READS   :   'lers'  ;   // Leitura de string como vetor de inteiros (ASCII, terminada em 0).
 
-// Funções de escrita (output)
-ESCREVER   : 'escrever' ;    // escrita numérica
-ESCREVERC  : 'escreverc' ;   // escrita de caráter
-ESCREVERV  : 'escreverv' ;   // escrita de vetor
-ESCREVERS  : 'escrevers' ;   // escrita de string
+// Funções de escrita (output):
+WRITE   : 'escrever'  ;   // Escrita numérica.
+WRITEC  : 'escreverc' ;   // Escrita de caráter.
+WRITEV  : 'escreverv' ;   // Escrita de vetor.
+WRITES  : 'escrevers' ;   // Escrita de string.
 
-// Operadores aritméticos suportados (subconjunto de C)
-MAIS    : '+' ;
-MENOS   : '-' ;
+// Operadores aritméticos suportados (subconjunto de C):
+PLUS    : '+' ;
+MINUS   : '-' ;
 MULT    : '*' ;
 DIV     : '/' ;
-MODULO  : '%' ;
+MOD     : '%' ;
 
-// Operadores relacionais
-MENOR       : '<' ;
-MENORIGUAL  : '<=' ;
-MAIOR       : '>' ;
-MAIORIGUAL  : '>=' ;
-IGUAL       : '==' ;
-DIFERENTE   : '!=' ;
+// Operadores relacionais:
+LT      : '<'   ;
+LE      : '<='  ;
+GT      : '>'   ;
+GE      : '>='  ;
+EQ      : '=='  ;
+NEQ     : '!='  ;
 
-// Operadores lógicos
-E_LOGICO    : '&&' ;
-OU_LOGICO   : '||' ;
-NAO         : '!' ;
+// Operadores lógicos:
+AND     :   '&&'    ;
+OR      :   '||'    ;
+NOT     :   '!'     ;
 
-// Símbolos e pontuação
-ATRIBUICAO   : '=' ;
-VIRGULA      : ',' ;
-PONTOVIRG    : ';' ;
-ABRECOLCH    : '[' ;
-FECHACOLCH   : ']' ;
-ABRECHAVES   : '{' ;
-FECHACHAVES  : '}' ;
-ABREPAR      : '(' ;
-FECHAPAR     : ')' ;
+// Símbolos e pontuação:
+ASSIGN      : '=' ;
+COMMA       : ',' ;
+SEMI_COLON  : ';' ;
+LBRACKET    : '[' ;
+RBRACKET    : ']' ;
+LBRACE      : '{' ;
+RBRACE      : '}' ;
+LPAREN      : '(' ;
+RPAREN      : ')' ;
 
-// Literais e identificadores
-STRINGLITERAL : '"' ( '\\' . | ~["\\\r\n] )* '"' ;  // string literal com escapes
-NUM_REAL      : [0-9]+ '.' [0-9]+ ;                 // literal real
-NUMERO        : [0-9]+ ;                            // literal inteiro
-IDENTIFICADOR : [a-zA-Z_][a-zA-Z0-9_]* ;            // identificador válido
+// Literais e identificadores:
+STRING_LITERAL  : '"' ( '\\' . | ~["\\\r\n] )* '"'  ;   // String literal com escapes.
+REAL_NUM        : [0-9]+ '.' [0-9]+                 ;   // Literal real.
+NUMBER          : [0-9]+                            ;   // Literal inteiro.
+IDENTIFIER      : [a-zA-Z_][a-zA-Z0-9_]*            ;   // Identificador válido.
 
-// Elementos ignorados
-COMENTARIO_BLOCK : '/*' .*? '*/' -> skip ;          // comentário multi-linha
-COMENTARIO_LINE  : '//' ~[\r\n]* -> skip ;          // comentário de linha
-ESPACO : [ \t\r\n]+ -> skip ;                       // whitespace
+// Elementos ignorados:
+BLOCK_COMMENT : '/*' .*? '*/' -> skip ;     // Comentário multi-linha.
+LINE_COMMENT  : '//' ~[\r\n]* -> skip ;     // Comentário de linha.
+WS            : [ \t\r\n]+ -> skip    ;     // Espaço.
 
-/* =========================
+/*
+ * -----------
  * PARSER
- * =========================
- *
+ * -----------
+ */
 
 /* ---------- Programa ---------- */
 
 /* Estrutura global: protótipos seguidos do corpo executável. */
-programa
-    : prototipos corpo EOF
+program
+    : prototypes body EOF
     ;
 
 /* Conjunto de protótipos opcionais seguido obrigatoriamente do protótipo da função principal. */
-prototipos
-    : prototipo* prototipoPrincipal
+prototypes
+    : prototype* mainPrototype
     ;
 
 /* Sequência de unidades (declarações ou funções) terminando obrigatoriamente na implementação da função principal. */
-corpo
-    : unidade* funcaoPrincipal
+body
+    : unit* mainFunction
     ;
 
 /* Elemento de topo do corpo: pode ser uma função definida ou uma declaração global. */
-unidade
-    : funcao
-    | declaracao
+unit
+    : functionDef
+    | declaration
     ;
 
 /* ---------- Funções ---------- */
 
 /* Assinatura de função sem corpo. */
-prototipo
-    : tipoRetorno IDENTIFICADOR ABREPAR parametros? FECHAPAR PONTOVIRG
+prototype
+    : returnType IDENTIFIER LPAREN parameters? RPAREN SEMI_COLON
     ;
 
 /* Declaração obrigatória da função principal. */
-prototipoPrincipal
-    : VAZIO PRINCIPAL ABREPAR FECHAPAR PONTOVIRG
+mainPrototype
+    : VOID MAIN LPAREN VOID? RPAREN SEMI_COLON
     ;
 
 /* Implementação da função principal. */
-funcaoPrincipal
-    : VAZIO PRINCIPAL ABREPAR FECHAPAR bloco
+mainFunction
+    : VOID MAIN LPAREN VOID? RPAREN block
     ;
 
 /* Definição de função com corpo. */
-funcao
-    : tipoRetorno IDENTIFICADOR ABREPAR parametros? FECHAPAR bloco
+functionDef
+    : returnType IDENTIFIER LPAREN parameters? RPAREN block
     ;
 
 /* Parâmetros formais: podem ser omitidos, explicitamente 'vazio', ou uma lista tipada de parâmetros. */
-parametros
-    : VAZIO
-    | parametro (VIRGULA parametro)*
+parameters
+    : VOID
+    | parameter (COMMA parameter)*
     ;
 
 /* Parâmetro simples ou vetor. */
-parametro
-    : tipo IDENTIFICADOR
-    | tipo IDENTIFICADOR ABRECOLCH FECHACOLCH
+parameter
+    : type IDENTIFIER?
+    | type IDENTIFIER? LBRACKET RBRACKET
     ;
 
 /* Tipos suportados pela linguagem. */
-tipo
-    : INTEIRO
-    | REAL
+type
+    : INT
+    | FLOAT
     ;
 
-tipoRetorno
-    : INTEIRO
-    | REAL
-    | VAZIO
+returnType
+    : INT
+    | FLOAT
+    | VOID
     ;
 
 /* ---------- Declarações ---------- */
 
 /* Declaração de variáveis, com ou sem inicialização. */
-declaracao
-    : tipo listaVariaveis PONTOVIRG
+declaration
+    : type variableList SEMI_COLON
     ;
 
 /* Conjunto de variáveis declaradas no mesmo contexto. */
-listaVariaveis
-    : variavel (VIRGULA variavel)*
+variableList
+    : variable (COMMA variable)*
     ;
 
 /* Declaração de variável:
@@ -167,189 +168,189 @@ listaVariaveis
  * Nota: lers() tem alternativa explícita pois infere o tamanho do vetor;
  * ler() e lerc() são tratados como expressões normais via chamadaFuncao.
  */
-variavel
-    : IDENTIFICADOR
-    | IDENTIFICADOR ATRIBUICAO expressao
-    | IDENTIFICADOR ABRECOLCH NUMERO FECHACOLCH
-    | IDENTIFICADOR ABRECOLCH FECHACOLCH ATRIBUICAO LERS ABREPAR FECHAPAR
-    | IDENTIFICADOR ABRECOLCH FECHACOLCH ATRIBUICAO blocoArray
-    | IDENTIFICADOR ABRECOLCH NUMERO FECHACOLCH ATRIBUICAO blocoArray
+variable
+    : IDENTIFIER
+    | IDENTIFIER ASSIGN expression
+    | IDENTIFIER LBRACKET NUMBER RBRACKET
+    | IDENTIFIER LBRACKET RBRACKET ASSIGN READS LPAREN RPAREN
+    | IDENTIFIER LBRACKET RBRACKET ASSIGN arrayBlock
+    | IDENTIFIER LBRACKET NUMBER RBRACKET ASSIGN arrayBlock
     ;
 
 /* Inicialização de vetor através de lista de expressões entre chavetas. */
-blocoArray
-    : ABRECHAVES listaValores? FECHACHAVES
+arrayBlock
+    : LBRACE valueList? RBRACE
     ;
 
 /* Valores usados na inicialização de vetores. */
-listaValores
-    : expressao (VIRGULA expressao)*
+valueList
+    : expression (COMMA expression)*
     ;
 
 /* ---------- Expressões ---------- */
 
 /* Ponto de entrada da hierarquia de precedência das expressões. */
-expressao
-    : expressaoOr
+expression
+    : expressionOr
     ;
 
 /* Operador lógico OU (menor precedência). */
-expressaoOr
-    : expressaoOr OU_LOGICO expressaoAnd
-    | expressaoAnd
+expressionOr
+    : expressionOr OR expressionOr
+    | expressionAnd
     ;
 
 /* Operador lógico E. */
-expressaoAnd
-    : expressaoAnd E_LOGICO expressaoEquality
-    | expressaoEquality
+expressionAnd
+    : expressionAnd AND expressionEquality
+    | expressionEquality
     ;
 
 /* Expressões com operadores de igualdade (==, !=), associativas à esquerda. */
-expressaoEquality
-    : expressaoRelacional
-    | expressaoEquality opEquality expressaoRelacional
+expressionEquality
+    : expressionRelational
+    | expressionEquality equalityOp expressionRelational
     ;
 
 /* Operadores de igualdade. */
-opEquality
-    : IGUAL
-    | DIFERENTE
+equalityOp
+    : EQ
+    | NEQ
     ;
 
 /* Expressões com operadores relacionais (<, <=, >, >=). */
-expressaoRelacional
-    : expressaoAdd
-    | expressaoRelacional opRelacional expressaoAdd
+expressionRelational
+    : expressionAdd
+    | expressionRelational relationalOp expressionAdd
     ;
 
 /* Operadores relacionais (<, <=, >, >=). */
-opRelacional
-    : MENOR
-    | MENORIGUAL
-    | MAIOR
-    | MAIORIGUAL
+relationalOp
+    : LT
+    | LE
+    | GT
+    | GE
     ;
 
 /* Soma e subtração. */
-expressaoAdd
-    : expressaoAdd MAIS expressaoMul
-    | expressaoAdd MENOS expressaoMul
-    | expressaoMul
+expressionAdd
+    : expressionAdd PLUS expressionMul
+    | expressionAdd MINUS expressionMul
+    | expressionMul
     ;
 
 /* Multiplicação, divisão e módulo. */
-expressaoMul
-    : expressaoMul MULT expressaoUnaria
-    | expressaoMul DIV expressaoUnaria
-    | expressaoMul MODULO expressaoUnaria
-    | expressaoUnaria
+expressionMul
+    : expressionMul MULT expressionUnary
+    | expressionMul DIV expressionUnary
+    | expressionMul MOD expressionUnary
+    | expressionUnary
     ;
 
 /* Operadores unários: negação lógica, negação aritmética ou expressão com possível cast. */
-expressaoUnaria
-    : NAO expressaoUnaria
-    | MENOS expressaoUnaria
+expressionUnary
+    : NOT expressionUnary
+    | MINUS expressionUnary
     | castExpr
     ;
 
 /* Conversão explícita de tipo com possibilidade de encadeamento de casts. */
 castExpr
-    : ABREPAR tipo FECHAPAR castExpr
+    : LPAREN type RPAREN castExpr
     | primary
     ;
 
 /* Unidade atómica de expressão: literais, identificadores, acessos a vetor, chamadas ou subexpressões. */
 primary
-    : ABREPAR expressao FECHAPAR
-    | chamadaFuncao
-    | IDENTIFICADOR
-    | IDENTIFICADOR ABRECOLCH expressao FECHACOLCH
-    | NUMERO
-    | NUM_REAL
-    | STRINGLITERAL
+    : LPAREN expression RPAREN
+    | functionCall
+    | IDENTIFIER
+    | IDENTIFIER LBRACKET expression RBRACKET
+    | NUMBER
+    | REAL_NUM
+    | STRING_LITERAL
     ;
 
 /* Chamadas de função:
  * - funções definidas pelo utilizador
  * - funções de entrada embutidas (ler, lerc, lers)
  */
-chamadaFuncao
-    : IDENTIFICADOR ABREPAR argumentos? FECHAPAR
-    | LER ABREPAR FECHAPAR
-    | LERC ABREPAR FECHAPAR
-    | LERS ABREPAR FECHAPAR
+functionCall
+    : IDENTIFIER LPAREN arguments? RPAREN
+    | READ LPAREN RPAREN
+    | READC LPAREN RPAREN
+    | READS LPAREN RPAREN
     ;
 
 /* Argumentos passados a funções. */
-argumentos
-    : expressao (VIRGULA expressao)*
+arguments
+    : expression (COMMA expression)*
     ;
 
 /* ---------- Instruções ---------- */
 
 /* Bloco de instruções delimitado por chavetas. */
-bloco
-    : ABRECHAVES instrucao* FECHACHAVES
+block
+    : LBRACE statement* RBRACE
     ;
 
 /* Regra principal de instrução, estruturada para resolver a ambiguidade do "dangling else". */
-instrucao
-    : SE ABREPAR expressao FECHAPAR bloco (SENAO bloco)?
-    | instrucaoEnquanto
-    | instrucaoPara
-    | instrucaoEscrita
-    | instrucaoReturn
-    | instrucaoAtribuicao
-    | instrucaoExpressao
-    | declaracao
-    | bloco
+statement
+    : IF LPAREN expression RPAREN block (ELSE block)?
+    | whileStatement
+    | forStatement
+    | writeStatement
+    | returnStatement
+    | assignStatement
+    | expressionStatement
+    | declaration
+    | block
     ;
 
 /* Ciclo while. */
-instrucaoEnquanto
-    : ENQUANTO ABREPAR expressao FECHAPAR bloco
+whileStatement
+    : WHILE LPAREN expression RPAREN block
     ;
 
 /* Ciclo 'para' com componentes opcionais: inicialização, condição e atualização. */
-instrucaoPara
-    : PARA ABREPAR expressaoOuAtribuicao? PONTOVIRG 
-                       expressao? PONTOVIRG 
-                       expressaoOuAtribuicao? FECHAPAR bloco
+forStatement
+    : FOR LPAREN expressionOrAssign? SEMI_COLON
+                       expression? SEMI_COLON
+                       expressionOrAssign? RPAREN block
     ;
 
 /* Expressão que pode ser uma atribuição ou uma expressão simples (usada no ciclo 'para'). */
-expressaoOuAtribuicao
-    : (IDENTIFICADOR | IDENTIFICADOR ABRECOLCH expressao FECHACOLCH) ATRIBUICAO expressao
-    | expressao
+expressionOrAssign
+    : (IDENTIFIER | IDENTIFIER LBRACKET expression RBRACKET) ASSIGN expression
+    | expression
     ;
 
 /* Instruções de saída (output) para valores numéricos, caracteres, vetores ou strings. */
-instrucaoEscrita
-    : ESCREVER ABREPAR expressao FECHAPAR PONTOVIRG
-    | ESCREVERC ABREPAR expressao FECHAPAR PONTOVIRG
-    | ESCREVERV ABREPAR IDENTIFICADOR FECHAPAR PONTOVIRG
-    | ESCREVERS ABREPAR argumentoString FECHAPAR PONTOVIRG
+writeStatement
+    : WRITE LPAREN expression RPAREN SEMI_COLON
+    | WRITEC LPAREN expression RPAREN SEMI_COLON
+    | WRITEV LPAREN IDENTIFIER RPAREN SEMI_COLON
+    | WRITES LPAREN stringArgument RPAREN SEMI_COLON
     ;
 
 /* Retorno de função. */
-instrucaoReturn
-    : RETORNAR expressao? PONTOVIRG
+returnStatement
+    : RETURN expression? SEMI_COLON
     ;
 
 /* Atribuição simples ou indexada. */
-instrucaoAtribuicao
-    : (IDENTIFICADOR | IDENTIFICADOR ABRECOLCH expressao FECHACOLCH) 
-      ATRIBUICAO expressao PONTOVIRG
+assignStatement
+    : (IDENTIFIER | IDENTIFIER LBRACKET expression RBRACKET)
+      ASSIGN expression SEMI_COLON
     ;
 
 /* Expressão isolada. */
-instrucaoExpressao
-    : expressao PONTOVIRG
+expressionStatement
+    : expression SEMI_COLON
     ;
 
 /* Argumento de string: literal ou identificador (esperado representar vetor de inteiros terminado em 0 — verificação externa). */
-argumentoString
-    : IDENTIFICADOR
-    | STRINGLITERAL
+stringArgument
+    : IDENTIFIER
+    | STRING_LITERAL
     ;

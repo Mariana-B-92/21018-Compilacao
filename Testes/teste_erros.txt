@@ -1,0 +1,14 @@
+vazio principal(vazio) { /* Erro Semântico: principal tem de retornar vazio */
+    int x; /* Erro Léxico/Sintático: uso de palavra C proibida em vez de 'inteiro' */
+
+    real y = 3.14;
+    inteiro z = y; /* Erro Semântico: atribuição de real a inteiro */
+
+    w = 5; /* Erro Semântico: variável não declarada */
+
+    escreverc(3.14); /* Erro Semântico: escreverc exige um inteiro */
+
+    se (x > y) {
+        ler(x); /* Erro Sintático/Semântico: ler() não recebe argumentos na MOCP */
+    }
+}
