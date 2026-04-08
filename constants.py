@@ -1,0 +1,88 @@
+# Palavras-chave de C que não são suportadas em MOCP:
+FORBIDDEN_C_WORDS = {
+    'auto',
+    'break',
+    'case',
+    'char',
+    'const',
+    'continue',
+    'default',
+    'double',
+    'else',
+    'enum',
+    'extern',
+    'float',
+    'for',
+    'goto',
+    'if',
+    'int',
+    'long',
+    'main',
+    'printf',
+    'read',
+    'register',
+    'return',
+    'short',
+    'signed',
+    'sizeof',
+    'static',
+    'struct',
+    'switch',
+    'typedef',
+    'union',
+    'unsigned',
+    'void',
+    'volatile'
+    'while',
+    'write',
+}
+
+# Operadores de C que não estão disponíveis no subconjunto MOCP:
+FORBIDDEN_C_OPERATORS = {
+    '++',
+    '--',
+    '+=',
+    '-=',
+    '*=',
+    '/=',
+    '%=',
+    '<<',
+    '>>',
+    '&',
+    '|',
+    '^',
+    '~',
+}
+
+# Mapeamento de palavras-chave de C para equivalente em MOCP:
+MAP_C_MOCP = {
+    'double': 'real',
+    'else': 'senao',
+    'for': 'para',
+    'if': 'se',
+    'int': 'inteiro',
+    'main': 'principal',
+    'read': 'ler',
+    'readc': 'lerc',
+    'reads': 'lers',
+    'return': 'retornar',
+    'void': 'vazio',
+    'while': 'enquanto',
+    'write': 'escrever',
+    'writec': 'escreverc',
+    'writes': 'escrevers',
+    'writev': 'escreverv',
+}
+
+# Mapeamento de símbolos de C para MOCP:
+MAP_MOCP_SYMBOLS = {
+    'ASSIGN': '=',
+    'COMMA': ',',
+    'SEMI_COLON': ';',
+    'LBRACKET': '[',
+    'RBRACKET': ']',
+    'LBRACE': '{',
+    'RBRACE': '}',
+    'LPAREN': '(',
+    'RPAREN': ')',
+}
