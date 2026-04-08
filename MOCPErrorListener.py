@@ -38,11 +38,11 @@ class MOCPErrorListener(ErrorListener):
             message = f"[Erro Sintático] Palavra-chave inválida '{symbol}' (linha {line}, coluna {column}). Use '{suggestion}'."
 
         # Deteta operadores proibidos em MOCP:
-        if symbol in FORBIDDEN_C_OPERATORS:
+        elif symbol in FORBIDDEN_C_OPERATORS:
             message = f"[Erro Sintático] Operador '{symbol}' não é suportado na MOCP (linha {line}, coluna {column})."
 
         # Erro léxico (caracteres inválidos):
-        if "token recognition error" in msg:
+        elif "token recognition error" in msg:
             match = re.search(r"at:\s*'([^']+)'", msg)
             wrong_char = match.group(1) if match else symbol
 
