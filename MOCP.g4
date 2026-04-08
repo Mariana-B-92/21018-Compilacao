@@ -63,16 +63,11 @@ RBRACE      : '}' ;
 LPAREN      : '(' ;
 RPAREN      : ')' ;
 
-// Literais:
-STRING_LITERAL  : '"' ( '\\' . | ~["\\\r\n] )* '"'  ;                      // String literal com escapes.
-REAL_NUM        : [0-9]+ '.' [0-9]+                 ;                      // Literal real.
-NUMBER          : [0-9]+                            ;                      // Literal inteiro.
-
-// Palavras-chave proibidas:
-INVALID_C_KEYWORD : 'int' | 'if' | 'else' | 'while' | 'for' | 'return';    // Palavras-chave da linguagem C original
-
-// Identificadores:
-IDENTIFIER      : [a-zA-Z_][a-zA-Z0-9_]*            ;                      // Identificador válido.
+// Literais e identificadores:
+STRING_LITERAL  : '"' ( '\\' . | ~["\\\r\n] )* '"'  ;   // String literal com escapes.
+REAL_NUM        : [0-9]+ '.' [0-9]+                 ;   // Literal real.
+NUMBER          : [0-9]+                            ;   // Literal inteiro.
+IDENTIFIER      : [a-zA-Z_][a-zA-Z0-9_]*            ;   // Identificador válido.
 
 // Elementos ignorados:
 BLOCK_COMMENT : '/*' .*? '*/' -> skip ;     // Comentário multi-linha.
@@ -301,8 +296,7 @@ block
 
 /* Regra principal de instrução, estruturada para resolver a ambiguidade do "dangling else". */
 statement
-    : invalidStatement
-    | IF LPAREN expression RPAREN block (ELSE block)?
+    : IF LPAREN expression RPAREN block (ELSE block)?
     | whileStatement
     | forStatement
     | writeStatement
@@ -311,11 +305,6 @@ statement
     | expressionStatement
     | declaration
     | block
-    ;
-
-/* Palavra-chave inválida. */
-invalidStatement
-    : INVALID_C_KEYWORD
     ;
 
 /* Ciclo while. */
