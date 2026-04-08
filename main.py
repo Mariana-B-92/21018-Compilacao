@@ -1,3 +1,4 @@
+import shutil
 import sys
 import subprocess
 from antlr4 import *
@@ -7,8 +8,29 @@ from MOCPErrorListener import MOCPErrorListener
 from MOCPSemanticAnalyzer import MOCPSemanticAnalyzer
 
 def run_antlr4_parse(file_path, option):
-    cmd = f"cat {file_path} | antlr4-parse MOCP.g4 program {option}"
-    subprocess.run(cmd, shell=True)
+    """
+    Executa antlr4-parse de forma cross-platform (Windows, Linux, macOS).
+    """
+    # Verifica se antlr4-parse está disponível
+    if shutil.which("antlr4-parse") is None:
+        print("Erro: antlr4-parse não encontrado no PATH.")
+        print("Certifique-se de que o ANTLR4 está instalado e configurado no PATH.")
+        return
+
+    # Lê o conteúdo do ficheiro
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            file_content = f.read()
+    except FileNotFoundError:
+        print(f"Erro: ficheiro '{file_path}' não encontrado.")
+        return
+
+    cmd = ["antlr4-parse", "MOCP.g4", "program", option]
+
+    try:
+        subprocess.run(cmd, input=file_content.encode('utf-8'), check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Erro ao executar antlr4-parse: {e}")
 
 def main():
     if len(sys.argv) < 2:
@@ -16,7 +38,8 @@ def main():
         return
 
     input_file = sys.argv[1]
-
+    
+    # Suporte a opções -tree e -gui
     if "-tree" in sys.argv:
         run_antlr4_parse(input_file, "-tree")
         return
@@ -25,7 +48,12 @@ def main():
         run_antlr4_parse(input_file, "-gui")
         return
 
-    input_stream = FileStream(input_file, encoding='utf-8')
+    # Leitura do ficheiro para análise normal
+    try:
+        input_stream = FileStream(input_file, encoding='utf-8')
+    except FileNotFoundError:
+        print(f"Erro: ficheiro '{input_file}' não encontrado.")
+        return
 
     # Análise Sintática/Léxica:
     lexer = MOCPLexer(input_stream)
