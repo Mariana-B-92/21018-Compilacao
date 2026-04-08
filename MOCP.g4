@@ -196,7 +196,7 @@ expression
 
 /* Operador lógico OU (menor precedência). */
 expressionOr
-    : expressionOr OR expressionOAnd
+    : expressionOr OR expressionAnd
     | expressionAnd
     ;
 
