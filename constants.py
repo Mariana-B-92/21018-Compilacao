@@ -32,7 +32,7 @@ FORBIDDEN_C_WORDS = {
     'union',
     'unsigned',
     'void',
-    'volatile'
+    'volatile',
     'while',
     'write',
 }
