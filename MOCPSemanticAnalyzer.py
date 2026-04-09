@@ -646,11 +646,11 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
                 self._register_error(context, MOCPErrorMessages.invalid_operation_for_type(expression_type))
             return expression_type
 
-        return self._eval(context.castExpression())
+        return self._eval(context.castExpr())
 
-    def visitCastExpression(self, context: MOCPParser.CastExpressionContext):
+    def visitCastExpr(self, context: MOCPParser.CastExprContext):
         """
-        Regra: LPAREN type RPAREN castExpression | primary
+        Regra: LPAREN type RPAREN castExpr | primary
         """
         if context.type_():
             target_type = context.type_().getText()
@@ -661,7 +661,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
                 return self.ERROR
 
             # A expressão de origem também tem de ser numérica
-            source_type = self._eval(context.castExpression())
+            source_type = self._eval(context.castExpr())
             if not self._is_numeric(source_type) and source_type != self.ERROR:
                 self._register_error(context, "Cast só pode ser aplicado a expressões numéricas.")
                 return self.ERROR
