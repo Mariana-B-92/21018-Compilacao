@@ -120,12 +120,32 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         Regra: VOID MAIN LPAREN RPAREN block
         """
-        if MAP_C_MOCP.get("main") not in self.declared_prototypes:
+        main_name = MAP_C_MOCP.get("main")
+
+        # Verifica se o protótipo de 'principal' foi declarado
+        if main_name not in self.declared_prototypes:
             self._register_error(context, MOCPErrorMessages.MISSING_MAIN)
 
+        # Verifica se 'principal' já foi definida anteriormente; caso contrário, regista-a
+        symbol = self.symbol_table.resolve(main_name)
+        if symbol and symbol.get("is_defined", False):
+            self._register_error(context, "Função 'principal' já foi definida anteriormente.")
+        else:
+            self.symbol_table.define(
+                main_name,
+                {
+                    "type": MAP_C_MOCP.get("void"),
+                    "is_function": True,
+                    "param_types": [],
+                    "is_defined": True,
+                },
+            )
+
+        # Visita o bloco da função num novo âmbito
         self.symbol_table.enter_scope()
         self.visit(context.block())
         self.symbol_table.exit_scope()
+        return None
 
     def visitFunctionDef(self, context: MOCPParser.FunctionDefContext):
         """
@@ -134,21 +154,55 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         function_name = context.IDENTIFIER().getText()
         self.current_function_type = context.returnType().getText()
 
+        # Verifica se o protótipo da função foi previamente declarado
         if function_name not in self.declared_prototypes:
             self._register_error(context, MOCPErrorMessages.prototype_not_declared(function_name))
 
+        # Verifica se a função já foi definida anteriormente
+        symbol = self.symbol_table.resolve(function_name)
+        if symbol and symbol.get("is_defined", False):
+            self._register_error(context, f"Função '{function_name}' já foi definida anteriormente.")
+
+        # Recolhe os tipos dos parâmetros, se existirem e não forem (void)
+        param_types = []
+        if context.parameters():
+            params = context.parameters()
+            if not params.VOID():
+                for p in params.parameter():
+                    ptype = p.type_().getText()
+                    is_array = p.LBRACKET() is not None
+                    param_types.append((ptype, is_array))
+
+        # Atualiza a definição da função na tabela de símbolos
+        self.symbol_table.define(
+            function_name,
+            {
+                "type": self.current_function_type,
+                "is_function": True,
+                "param_types": param_types,
+                "is_defined": True,
+            },
+        )
+
+        # Visita os parâmetros e o bloco da função num novo âmbito
         self.symbol_table.enter_scope()
-        if context.parameters(): self.visit(context.parameters())
+        if context.parameters():
+            self.visit(context.parameters())
         self.visit(context.block())
         self.symbol_table.exit_scope()
+
+        self.current_function_type = None
+        return None
 
     def visitBlock(self, context: MOCPParser.BlockContext):
         """
         Regra: LBRACE statement* RBRACE
         """
+        # O bloco cria sempre um novo âmbito próprio
         self.symbol_table.enter_scope()
         self.visitChildren(context)
         self.symbol_table.exit_scope()
+        return None
 
     # ==========================================
     # 4. DECLARAÇÃO DE VARIÁVEIS
