@@ -451,38 +451,86 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitFunctionCall(self, context: MOCPParser.FunctionCallContext):
         """
-        Regra: IDENTIFIER (arguments?) | READ () | READC () | READS ()
+        Regra:
+            IDENTIFIER LPAREN arguments? RPAREN
+        | READ LPAREN RPAREN
+        | READC LPAREN RPAREN
+        | READS LPAREN RPAREN
         """
 
-        # 1. Funções Embutidas do MOCP
-        if context.READ() or context.READC(): return MAP_C_MOCP.get("int")
-        if context.READS(): return "string"
+        # Funções embutidas da linguagem MOCP
+        if context.READ():  return self.NUMERIC
+        if context.READC(): return MAP_C_MOCP.get("int")
+        if context.READS(): return self.STRING_ARRAY
 
-        # 2. Funções definidas pelo utilizador
-        function_name = context.IDENTIFIER().getText()
-        symbol = self.symbol_table.resolve(function_name)
+        if context.IDENTIFIER():
+            func_name = context.IDENTIFIER().getText()
+            symbol = self.symbol_table.resolve(func_name)
 
-        if not symbol:
-            self._register_error(context, MOCPErrorMessages.function_not_declared(function_name))
-            return self.ERROR
+            # Verifica se a função foi declarada
+            if not symbol:
+                self._register_error(context, MOCPErrorMessages.function_not_declared(func_name))
+                return self.ERROR
 
-        if not symbol.get("is_function"):
-            self._register_error(context, MOCPErrorMessages.variable_not_a_function(function_name))
-            return self.ERROR
+            # Verifica se o identificador é de facto uma função
+            if not symbol.get("is_function"):
+                self._register_error(context, MOCPErrorMessages.variable_not_a_function(func_name))
+                return self.ERROR
 
-        # Visita os argumentos passados (para garantir que variáveis usadas lá dentro existem, etc.)
-        if context.arguments():
-            self.visit(context.arguments())
+            # Recolhe os argumentos passados na chamada
+            arg_exprs = []
+            if context.arguments():
+                arg_exprs = context.arguments().expression()
 
-        return symbol["type"]
+            # Verifica se o número de argumentos corresponde ao esperado
+            expected_params = symbol.get("param_types", [])
+            if len(arg_exprs) != len(expected_params):
+                self._register_error(
+                    context,
+                    f"Função '{func_name}' espera {len(expected_params)} argumento(s),"
+                    f" mas recebeu {len(arg_exprs)}.",
+                )
+                for arg in arg_exprs:
+                    self._eval(arg)
+                return symbol["type"]
 
-    def visitArguments(self, context: MOCPParser.ArgumentsContext):
-        """
-        Regra: expression, expression
-        """
-        for expression in context.expression():
-            self.visit(expression)
+            # Verifica o tipo de cada argumento face ao parâmetro esperado
+            for i, arg_expr in enumerate(arg_exprs):
+                arg_type = self._eval(arg_expr)
+                expected_type, expected_is_array = expected_params[i]
 
+                if arg_type == self.ERROR:
+                    continue
+
+                if expected_is_array:
+                    # O argumento deve ser um array ou string
+                    if isinstance(arg_expr, MOCPParser.PrimaryContext) and arg_expr.IDENTIFIER():
+                        var_name = arg_expr.IDENTIFIER().getText()
+                        var_sym = self.symbol_table.resolve(var_name)
+                        if var_sym and not var_sym.get("is_array", False):
+                            self._register_error(
+                                context,
+                                f"Argumento {i + 1} da função '{func_name}' deve ser um vetor.",
+                            )
+                    elif arg_type != self.STRING_ARRAY:
+                        self._register_error(
+                            context,
+                            f"Argumento {i + 1} da função '{func_name}' deve ser um vetor,"
+                            f" mas recebeu tipo '{arg_type}'.",
+                        )
+                else:
+                    # O argumento deve ser compatível com o tipo escalar esperado
+                    if not self._types_compatible(expected_type, arg_type):
+                        self._register_error(
+                            context,
+                            f"Argumento {i + 1} da função '{func_name}' é do tipo '{arg_type}',"
+                            f" mas esperava '{expected_type}'.",
+                        )
+
+            return symbol["type"]
+
+        return self.ERROR
+        
     # ==========================================
     # 9. RESTANTES EXPRESSÕES E PRECEDÊNCIAS
     # ==========================================
