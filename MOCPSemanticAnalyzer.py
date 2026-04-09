@@ -321,80 +321,81 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitPrimary(self, context: MOCPParser.PrimaryContext):
         """
-        Regra: (expression) | functionCall | IDENTIFIER | IDENTIFIER[expression] | NUMBER | REAL_NUM | STRING_LITERAL
+        Regra: LPAREN expression RPAREN | functionCall | IDENTIFIER
+            | IDENTIFIER LBRACKET expression RBRACKET
+            | NUMBER | REAL_NUM | STRING_LITERAL
         """
-
-        # 1. Literais Numéricos
+        # Literais numéricos inteiros e reais
         if context.NUMBER(): return MAP_C_MOCP.get("int")
         if context.REAL_NUM(): return MAP_C_MOCP.get("double")
 
-        # 2. Strings
-        if context.STRING_LITERAL(): return "string"
+        # Literal de cadeia de caracteres
+        if context.STRING_LITERAL(): return self.STRING_ARRAY
+
+        # Expressão entre parênteses: (expression)
+        if context.expression() and not context.functionCall() and not context.IDENTIFIER():
+            return self._eval(context.expression())
 
         if context.IDENTIFIER():
-            variable_name = context.IDENTIFIER().getText()
-            symbol = self.symbol_table.resolve(variable_name)
+            var_name = context.IDENTIFIER().getText()
+            symbol = self.symbol_table.resolve(var_name)
 
-            # 3. Variável Simples (Apenas IDENTIFIER, sem parenteses retos ou chamadas de função)
-            if not context.LBRACKET():
-                if not symbol:
-                    self._register_error(context, MOCPErrorMessages.variable_not_declared(variable_name))
-                    return self.ERROR
-                elif symbol.get("is_function"):
-                    self._register_error(context, MOCPErrorMessages.variable_is_a_function(variable_name))
-                    return self.ERROR
-                else:
-                    return symbol["type"]
+            # Verifica se a variável foi declarada
+            if not symbol:
+                self._register_error(context, MOCPErrorMessages.variable_not_declared(var_name))
+                return self.ERROR
 
-            # 4. Acesso a Vetor (IDENTIFIER[expression])
+            # Verifica se o identificador não é uma função usada como variável
+            if symbol.get("is_function"):
+                self._register_error(context, MOCPErrorMessages.variable_is_a_function(var_name))
+                return self.ERROR
+
+            # Acesso a elemento de array: IDENTIFIER[expression]
             if context.LBRACKET():
-                if not symbol:
-                    self._register_error(context, MOCPErrorMessages.array_not_declared(variable_name))
+                if not symbol.get("is_array"):
+                    self._register_error(context, MOCPErrorMessages.variable_is_not_vector(var_name))
                     return self.ERROR
-                elif not symbol.get("is_array"):
-                    self._register_error(context, MOCPErrorMessages.variable_is_not_vector(variable_name))
 
-                index_type = self.visit(context.expression())
-
-                if index_type != "inteiro" and index_type != self.ERROR:
+                index_type = self._eval(context.expression())
+                if not self._is_int(index_type) and index_type != self.ERROR:
                     self._register_error(context, MOCPErrorMessages.ARRAY_INVALID_INDEX)
 
                 return symbol["type"]
 
-        # 5. Chamada de Função
-        if context.functionCall():
-            return self.visit(context.functionCall())
+            # Variável simples
+            return symbol["type"]
 
-        # 6. Expressão entre parênteses: ( expressao )
-        if context.expression() and context.LPAREN():
-            return self.visit(context.expression())
+        # Chamada de função
+        if context.functionCall():
+            return self._eval(context.functionCall())
 
         return self.ERROR
 
     def visitExpressionAdd(self, context: MOCPParser.ExpressionAddContext):
         """
-        Regra: expressionAdd PLUS expressionMul | expressionAdd MINUS expressionMul | expressionMul
+        Regra: expressionAdd PLUS expressionMul
+            | expressionAdd MINUS expressionMul
+            | expressionMul
         """
 
-        # Se for apenas a passagem para a próxima regra de precedência:
+       # Sem operador: propaga o tipo do operando
         if not context.PLUS() and not context.MINUS():
-            return self.visit(context.expressionMul())
+            return self._eval(context.expressionMul())
 
-        left_type = self.visit(context.expressionAdd())
-        right_type = self.visit(context.expressionMul())
+        left_type = self._eval(context.expressionAdd())
+        right_type = self._eval(context.expressionMul())
 
         if left_type == self.ERROR or right_type == self.ERROR:
             return self.ERROR
 
-        allowed_types = [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double")]
-
-        if left_type not in allowed_types or right_type not in allowed_types:
+       # Ambos os operandos têm de ser numéricos
+        if not (self._is_numeric(left_type) and self._is_numeric(right_type)):
             self._register_error(context, MOCPErrorMessages.invalid_operation(left_type, right_type))
             return self.ERROR
 
-        if left_type == MAP_C_MOCP.get("double") or right_type == MAP_C_MOCP.get("double"):
+        # Promoção para double se algum operando for real
+        if self._is_real(left_type) or self._is_real(right_type):
             return MAP_C_MOCP.get("double")
-
         return MAP_C_MOCP.get("int")
 
     # ==========================================
