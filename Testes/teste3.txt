@@ -1,0 +1,9 @@
+inteiro foo(inteiro);
+vazio principal(vazio);
+
+inteiro foo(inteiro a) {
+    retornar a;
+}
+
+vazio principal(vazio) {
+}
