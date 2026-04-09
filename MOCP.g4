@@ -133,8 +133,8 @@ parameters
 
 /* Parâmetro simples ou vetor. */
 parameter
-    : type IDENTIFIER?
-    | type IDENTIFIER? LBRACKET RBRACKET
+    : type IDENTIFIER
+    | type IDENTIFIER LBRACKET RBRACKET
     ;
 
 /* Tipos suportados pela linguagem. */
