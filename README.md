@@ -33,7 +33,12 @@ Este repositório inclui:
 MOCP/
 ├── MOCP.g4              # Gramática da linguagem MOCP em ANTLR4
 ├── MOCPErrorListener.py # Intercepta e traduz erros do ANTLR4 em mensagens amigáveis para MOCP.
+├── MOCPErrorMessages    # Mensagens de erro semântico padronizadas (funções auxiliares)
+├── MOCPSemanticAnalyzer # Analisador semântico: valida tipos, declarações, escopos e chamadas
+├── MOCPSymbolTable      # Tabela de símbolos com suporte a escopos aninhados
+├── constants.py         # Mapeamento entre palavras‑chave MOCP e C
 ├── main.py              # Script principal para execução e análise
+├── utils.py             # Funções utilitárias
 ├── Testes/              # Diretório com exemplos de programas MOCP
 └── README.md            # Documentação do projeto
 ```
