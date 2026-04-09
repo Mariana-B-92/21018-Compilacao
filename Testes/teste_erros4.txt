@@ -1,0 +1,13 @@
+/* Inválido: Inicialização com tipo incompatível */
+inteiro identidade(inteiro);
+vazio principal(vazio);
+
+inteiro x = 3.14;
+
+inteiro identidade(inteiro k) {
+    retornar k;
+}
+
+vazio principal(vazio) {
+    escrever(x);
+}
