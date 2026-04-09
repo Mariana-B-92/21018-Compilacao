@@ -300,25 +300,21 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitParameter(self, context: MOCPParser.ParameterContext):
         """
-        Regra: IDENTIFIER? | IDENTIFIER?[]
+        Regra: type IDENTIFIER | type IDENTIFIER LBRACKET RBRACKET
         """
         parameter_type = context.type_().getText()
-        is_array = context.LBRACKET() is not None
-
-        if not context.IDENTIFIER():
-            self._register_error(context, MOCPErrorMessages.UNIDENTIFIED_PARAMETERS)
-            return
-
         parameter_name = context.IDENTIFIER().getText()
-
+        is_array = context.LBRACKET() is not None
+        
+        # Regista o parâmetro na tabela de símbolos do âmbito atual
         defined = self.symbol_table.define(
             parameter_name,
             { "type": parameter_type, "is_array": is_array, "is_function": False }
         )
-
         if not defined:
             self._register_error(context, MOCPErrorMessages.parameter_already_declared(parameter_name))
-
+        return None
+        
     # ==========================================
     # 6. EXPRESSÕES E VERIFICAÇÃO DE TIPOS
     # ==========================================
