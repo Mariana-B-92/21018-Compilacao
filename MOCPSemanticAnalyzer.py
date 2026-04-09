@@ -535,93 +535,157 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
     # 9. RESTANTES EXPRESSÕES E PRECEDÊNCIAS
     # ==========================================
 
+    def visitExpressionOr(self, context: MOCPParser.ExpressionOrContext):
+        """
+        Regra: expressionOr OR expressionAnd | expressionAnd
+        """
+        # Sem operador: propaga o tipo do operando
+        if context.OR() is None:
+            return self._eval(context.expressionAnd())
+
+        left_type = self._eval(context.expressionOr())
+        right_type = self._eval(context.expressionAnd())
+
+        # Ambos os operandos têm de ser numéricos
+        if left_type != self.ERROR and right_type != self.ERROR:
+            if not (self._is_numeric(left_type) and self._is_numeric(right_type)):
+                self._register_error(context, MOCPErrorMessages.invalid_operation(left_type, right_type))
+
+        # Operações lógicas resultam sempre num inteiro (0 ou 1)
+        return MAP_C_MOCP.get("int")
+
+    def visitExpressionAnd(self, context: MOCPParser.ExpressionAndContext):
+        """
+        Regra: expressionAnd AND expressionEquality | expressionEquality
+        """
+        # Sem operador: propaga o tipo do operando
+        if context.AND() is None:
+            return self._eval(context.expressionEquality())
+
+        left_type = self._eval(context.expressionAnd())
+        right_type = self._eval(context.expressionEquality())
+
+        # Ambos os operandos têm de ser numéricos
+        if left_type != self.ERROR and right_type != self.ERROR:
+            if not (self._is_numeric(left_type) and self._is_numeric(right_type)):
+                self._register_error(context, MOCPErrorMessages.invalid_operation(left_type, right_type))
+
+        # Operações lógicas resultam sempre num inteiro (0 ou 1)
+        return MAP_C_MOCP.get("int")
+        
     def visitExpressionMul(self, context: MOCPParser.ExpressionMulContext):
         """
-        Regra: expressionMul (MULT | DIV | MOD) expressionUnary | expressionUnary
+        Regra: expressionMul MULT expressionUnary
+            | expressionMul DIV expressionUnary
+            | expressionMul MOD expressionUnary
+            | expressionUnary
         """
+        # Sem operador: propaga o tipo do operando
         if not context.MULT() and not context.DIV() and not context.MOD():
-            return self.visit(context.expressionUnary())
+            return self._eval(context.expressionUnary())
 
-        left_type = self.visit(context.expressionMul())
-        right_type = self.visit(context.expressionUnary())
+        left_type = self._eval(context.expressionMul())
+        right_type = self._eval(context.expressionUnary())
 
         if left_type == self.ERROR or right_type == self.ERROR:
             return self.ERROR
 
         # Regra de C/MOCP: O módulo (%) só pode ser aplicado a inteiros
         if context.MOD():
-            if left_type != MAP_C_MOCP.get("int") or right_type != MAP_C_MOCP.get("int"):
+            if not (self._is_int(left_type) and self._is_int(right_type)):
                 self._register_error(context, MOCPErrorMessages.MOD_ONLY_FOR_INTEGERS)
                 return self.ERROR
-
             return MAP_C_MOCP.get("int")
 
-        # Coerção para multiplicação e divisão
-        if left_type == MAP_C_MOCP.get("double") or right_type == MAP_C_MOCP.get("double"):
-            return MAP_C_MOCP.get("double")
+        # Multiplicação e divisão requerem operandos numéricos
+        if not (self._is_numeric(left_type) and self._is_numeric(right_type)):
+            self._register_error(context, MOCPErrorMessages.invalid_operation(left_type, right_type))
+            return self.ERROR
 
+        # Promoção para double se algum operando for real
+        if self._is_real(left_type) or self._is_real(right_type):
+            return MAP_C_MOCP.get("double")
         return MAP_C_MOCP.get("int")
 
     def visitExpressionEquality(self, context: MOCPParser.ExpressionEqualityContext):
         """
         Regra: == | !=
         """
+        # Sem operador: propaga o tipo do operando
         if not context.equalityOp():
-            return self.visit(context.expressionRelational())
+            return self._eval(context.expressionRelational())
 
-        self.visit(context.expressionEquality())
-        self.visit(context.expressionRelational())
+        left_type = self._eval(context.expressionEquality())
+        right_type = self._eval(context.expressionRelational())
 
-        # Em C, a igualdade retorna 0 ou 1 (inteiro)
+        # Ambos os operandos têm de ser numéricos
+        if left_type != self.ERROR and right_type != self.ERROR:
+            if not (self._is_numeric(left_type) and self._is_numeric(right_type)):
+                self._register_error(context, MOCPErrorMessages.invalid_operation(left_type, right_type))
+
+        # Comparações de igualdade resultam num inteiro (0 ou 1)
         return MAP_C_MOCP.get("int")
 
     def visitExpressionRelational(self, context: MOCPParser.ExpressionRelationalContext):
         """
         Regra: < | <= | > | >=
         """
+        # Sem operador: propaga o tipo do operando
         if not context.relationalOp():
-            return self.visit(context.expressionAdd())
+            return self._eval(context.expressionAdd())
 
-        left_type = self.visit(context.expressionRelational())
-        right_type = self.visit(context.expressionAdd())
+        left_type = self._eval(context.expressionRelational())
+        right_type = self._eval(context.expressionAdd())
 
+        # Ambos os operandos têm de ser numéricos
         if left_type != self.ERROR and right_type != self.ERROR:
-            allowed_types = [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double")]
-
-            if left_type not in allowed_types or right_type not in allowed_types:
+            if not (self._is_numeric(left_type) and self._is_numeric(right_type)):
                 self._register_error(context, MOCPErrorMessages.INVALID_RELATIONAL_OPERATORS)
 
-        # Em C, comparações resultam num inteiro
+        # Comparações relacionais resultam num inteiro (0 ou 1)
         return MAP_C_MOCP.get("int")
 
     def visitExpressionUnary(self, context: MOCPParser.ExpressionUnaryContext):
         """
         Regra: ! | - | (cast)
         """
+        # Negação lógica: operando tem de ser numérico; resultado é inteiro
         if context.NOT():
-            self.visit(context.expressionUnary())
+            expr_type = self._eval(context.expressionUnary())
+            if not self._is_numeric(expr_type) and expr_type != self.ERROR:
+                self._register_error(context, MOCPErrorMessages.invalid_operation_for_type(expr_type))
             return MAP_C_MOCP.get("int")
 
+        # Negação aritmética: operando tem de ser numérico; preserva o tipo
         if context.MINUS():
-            expression_type = self.visit(context.expressionUnary())
+            expr_type = self._eval(context.expressionUnary())
+            if not self._is_numeric(expr_type) and expr_type != self.ERROR:
+                self._register_error(context, MOCPErrorMessages.invalid_operation_for_type(expr_type))
+            return expr_type
 
-            if expression_type not in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double"), self.ERROR]:
-                self._register_error(context, MOCPErrorMessages.invalid_operation_for_type(expression_type))
-
-            return expression_type
-
-        return self.visit(context.castExpr())
+        return self._eval(context.castExpr())
 
     def visitCastExpr(self, context: MOCPParser.CastExprContext):
         """
-        Regra: (cast)
+        Regra: LPAREN type RPAREN castExpr | primary
         """
         if context.type_():
-            new_type = context.type_().getText()
-            self.visit(context.castExpr())
-            return new_type
+            target_type = context.type_().getText()
 
-        return self.visit(context.primary())
+            # Cast só é permitido para tipos numéricos
+            if target_type not in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double")]:
+                self._register_error(context, "Cast só pode ser para 'inteiro' ou 'real'.")
+                return self.ERROR
+
+            # A expressão de origem também tem de ser numérica
+            source_type = self._eval(context.castExpr())
+            if not self._is_numeric(source_type) and source_type != self.ERROR:
+                self._register_error(context, "Cast só pode ser aplicado a expressões numéricas.")
+                return self.ERROR
+
+            return target_type
+
+        return self._eval(context.primary())
 
     # ==========================================
     # 10. INSTRUÇÕES DE CONTROLO E CICLOS
