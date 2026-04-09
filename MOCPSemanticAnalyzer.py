@@ -215,29 +215,84 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         self.current_declaration_type = context.type_().getText()
         self.visit(context.variableList())
         self.current_declaration_type = None
+        return None
 
     def visitVariable(self, context: MOCPParser.VariableContext):
         """
-        Regra: IDENTIFIER | IDENTIFIER=expression | IDENTIFIER[number] | IDENTIFIER[]=() | IDENTIFIER[]=[] | IDENTIFIER[number]=[]
+        Regra:
+            IDENTIFIER
+        | IDENTIFIER ASSIGN expression
+        | IDENTIFIER LBRACKET NUMBER RBRACKET
+        | IDENTIFIER LBRACKET RBRACKET ASSIGN READS LPAREN RPAREN
+        | IDENTIFIER LBRACKET RBRACKET ASSIGN arrayBlock
+        | IDENTIFIER LBRACKET NUMBER RBRACKET ASSIGN arrayBlock
         """
         variable_name = context.IDENTIFIER().getText()
         is_array = context.LBRACKET() is not None
+        decl_type = self.current_declaration_type
 
+        # Se for uma leitura (reads), trata-se como array de inteiros
+        if context.READS():
+            is_array = True
+            decl_type = MAP_C_MOCP.get("int")
+
+        # Regista a variável na tabela de símbolos
         defined = self.symbol_table.define(
             variable_name,
-            { "type": self.current_declaration_type, "is_array": is_array, "is_function": False}
+            {"type": decl_type, "is_array": is_array, "is_function": False},
         )
 
         if not defined:
             self._register_error(context, MOCPErrorMessages.variable_already_declared(variable_name))
+            return None
 
-        # Se a variável estiver a ser inicializada (tem uma expressão ou um arrayBlock associado),
-        # pelo que delegamos a visita a esses nós para futura verificação de tipos.
-        if context.expression():
-            self.visit(context.expression())
+        # Verifica a compatibilidade de tipos na inicialização escalar
+        if context.expression() and not context.LBRACKET():
+            expr_type = self._eval(context.expression())
+            if expr_type != self.ERROR and not self._types_compatible(decl_type, expr_type):
+                self._register_error(context, MOCPErrorMessages.variable_wrong_type(variable_name))
 
-        if context.arrayBlock():
+        # Verifica o tamanho e os elementos na inicialização de arrays
+        elif context.arrayBlock():
+            if context.NUMBER():
+                declared_size = int(context.NUMBER().getText())
+                array_block = context.arrayBlock()
+                if array_block.valueList():
+                    num_elements = len(array_block.valueList().expression())
+                    if num_elements > declared_size:
+                        self._register_error(
+                            context,
+                            f"Vetor '{variable_name}' declarado com tamanho {declared_size}"
+                            f" mas inicializado com {num_elements} elementos.",
+                        )
             self.visit(context.arrayBlock())
+
+        return None
+
+    def visitArrayBlock(self, context: MOCPParser.ArrayBlockContext):
+        """
+        Regra: LBRACE valueList? RBRACE
+        """
+        # Valida o tipo de cada elemento da lista de valores
+        if context.valueList():
+            base_type = self.current_declaration_type
+            for expr in context.valueList().expression():
+                expr_type = self._eval(expr)
+                if expr_type != self.ERROR and not self._types_compatible(base_type, expr_type):
+                    self._register_error(
+                        context,
+                        f"Elemento do vetor de tipo incompatível"
+                        f" (esperado '{base_type}', recebido '{expr_type}').",
+                    )
+        return None
+
+    def visitValueList(self, context: MOCPParser.ValueListContext):
+        """
+        Regra: expression (COMMA expression)*
+        """
+        for expr in context.expression():
+            self._eval(expr)
+        return None
 
     # ==========================================
     # 5. PARÂMETROS DE FUNÇÕES
