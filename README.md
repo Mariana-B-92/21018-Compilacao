@@ -88,11 +88,11 @@ brew install python3
 
 Para gerar a árvore textual
 ```bash
-python3 main.py Teste/teste1.txt -tree
+python3 main.py Testes/teste1.txt -tree
 ```
 Para abrir a GUI da árvore
 ```bash
-python3 main.py Teste/teste1.txt -gui
+python3 main.py Testes/teste1.txt -gui
 ```
 ⚠️ Certifique-se de que o ANTLR4 está instalado e o antlr4-parse está no PATH.
 
