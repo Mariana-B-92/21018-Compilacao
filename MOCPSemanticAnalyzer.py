@@ -71,7 +71,11 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         )
 
         if not defined:
-            self._register_error(context, MOCPErrorMessages.prototype_already_declared(MAP_C_MOCP.get("main")))
+            self._register_error(
+                context,
+                MOCPErrorMessages.prototype_already_declared(MAP_C_MOCP.get("main"))
+            )
+        return None
 
     def visitPrototype(self, context: MOCPParser.PrototypeContext):
         """
@@ -79,16 +83,34 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         function_name = context.IDENTIFIER().getText()
         function_type = context.returnType().getText()
-
         self.declared_prototypes.add(function_name)
+
+        # Recolhe os tipos dos parâmetros, se existirem e não forem (void)
+        param_types = []
+        if context.parameters():
+            params = context.parameters()
+            if not params.VOID():
+                for p in params.parameter():
+                    ptype = p.type_().getText()
+                    is_array = p.LBRACKET() is not None
+                    param_types.append((ptype, is_array))
 
         defined = self.symbol_table.define(
             function_name,
-            { "type": function_type, "is_function": True}
+            {
+                "type": function_type,
+                "is_function": True,
+                "param_types": param_types,
+                "is_defined": False,
+            },
         )
 
         if not defined:
-            self._register_error(context, MOCPErrorMessages.prototype_already_declared(function_name))
+            self._register_error(
+                context,
+                MOCPErrorMessages.prototype_already_declared(function_name)
+            )
+        return None
 
     # ==========================================
     # 3. FUNÇÕES E BLOCOS
