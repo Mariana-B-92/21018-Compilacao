@@ -219,13 +219,8 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitVariable(self, context: MOCPParser.VariableContext):
         """
-        Regra:
-            IDENTIFIER
-        | IDENTIFIER ASSIGN expression
-        | IDENTIFIER LBRACKET NUMBER RBRACKET
-        | IDENTIFIER LBRACKET RBRACKET ASSIGN READS LPAREN RPAREN
-        | IDENTIFIER LBRACKET RBRACKET ASSIGN arrayBlock
-        | IDENTIFIER LBRACKET NUMBER RBRACKET ASSIGN arrayBlock
+        Regra: IDENTIFIER | IDENTIFIER ASSIGN expression | IDENTIFIER LBRACKET NUMBER RBRACKET | IDENTIFIER LBRACKET RBRACKET ASSIGN READS LPAREN RPAREN
+               | IDENTIFIER LBRACKET RBRACKET ASSIGN arrayBlock | IDENTIFIER LBRACKET NUMBER RBRACKET ASSIGN arrayBlock
         """
         variable_name = context.IDENTIFIER().getText()
         is_array = context.LBRACKET() is not None
@@ -248,8 +243,8 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
         # Verifica a compatibilidade de tipos na inicialização escalar
         if context.expression() and not context.LBRACKET():
-            expr_type = self._eval(context.expression())
-            if expr_type != self.ERROR and not self._types_compatible(decl_type, expr_type):
+            expression_type = self._eval(context.expression())
+            if expression_type != self.ERROR and not self._types_compatible(decl_type, expression_type):
                 self._register_error(context, MOCPErrorMessages.variable_wrong_type(variable_name))
 
         # Verifica o tamanho e os elementos na inicialização de arrays
@@ -276,13 +271,13 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Valida o tipo de cada elemento da lista de valores
         if context.valueList():
             base_type = self.current_declaration_type
-            for expr in context.valueList().expression():
-                expr_type = self._eval(expr)
-                if expr_type != self.ERROR and not self._types_compatible(base_type, expr_type):
+            for expression in context.valueList().expression():
+                expression_type = self._eval(expression)
+                if expression_type != self.ERROR and not self._types_compatible(base_type, expression_type):
                     self._register_error(
                         context,
                         f"Elemento do vetor de tipo incompatível"
-                        f" (esperado '{base_type}', recebido '{expr_type}').",
+                        f" (esperado '{base_type}', recebido '{expression_type}').",
                     )
         return None
 
@@ -290,8 +285,8 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         Regra: expression (COMMA expression)*
         """
-        for expr in context.expression():
-            self._eval(expr)
+        for expression in context.expression():
+            self._eval(expression)
         return None
 
     # ==========================================
@@ -321,9 +316,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitPrimary(self, context: MOCPParser.PrimaryContext):
         """
-        Regra: LPAREN expression RPAREN | functionCall | IDENTIFIER
-            | IDENTIFIER LBRACKET expression RBRACKET
-            | NUMBER | REAL_NUM | STRING_LITERAL
+        Regra: LPAREN expression RPAREN | functionCall | IDENTIFIER | IDENTIFIER LBRACKET expression RBRACKET | NUMBER | REAL_NUM | STRING_LITERAL
         """
         # Literais numéricos inteiros e reais
         if context.NUMBER(): return MAP_C_MOCP.get("int")
@@ -337,23 +330,23 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
             return self._eval(context.expression())
 
         if context.IDENTIFIER():
-            var_name = context.IDENTIFIER().getText()
-            symbol = self.symbol_table.resolve(var_name)
+            variable_name = context.IDENTIFIER().getText()
+            symbol = self.symbol_table.resolve(variable_name)
 
             # Verifica se a variável foi declarada
             if not symbol:
-                self._register_error(context, MOCPErrorMessages.variable_not_declared(var_name))
+                self._register_error(context, MOCPErrorMessages.variable_not_declared(variable_name))
                 return self.ERROR
 
             # Verifica se o identificador não é uma função usada como variável
             if symbol.get("is_function"):
-                self._register_error(context, MOCPErrorMessages.variable_is_a_function(var_name))
+                self._register_error(context, MOCPErrorMessages.variable_is_a_function(variable_name))
                 return self.ERROR
 
             # Acesso a elemento de array: IDENTIFIER[expression]
             if context.LBRACKET():
                 if not symbol.get("is_array"):
-                    self._register_error(context, MOCPErrorMessages.variable_is_not_vector(var_name))
+                    self._register_error(context, MOCPErrorMessages.variable_is_not_vector(variable_name))
                     return self.ERROR
 
                 index_type = self._eval(context.expression())
@@ -373,9 +366,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitExpressionAdd(self, context: MOCPParser.ExpressionAddContext):
         """
-        Regra: expressionAdd PLUS expressionMul
-            | expressionAdd MINUS expressionMul
-            | expressionMul
+        Regra: expressionAdd PLUS expressionMul | expressionAdd MINUS expressionMul | expressionMul
         """
 
        # Sem operador: propaga o tipo do operando
@@ -404,8 +395,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitAssignStatement(self, context: MOCPParser.AssignStatementContext):
         """
-        Regra: IDENTIFIER ASSIGN expression SEMI_COLON
-            | IDENTIFIER LBRACKET expression RBRACKET ASSIGN expression SEMI_COLON
+        Regra: IDENTIFIER ASSIGN expression SEMI_COLON | IDENTIFIER LBRACKET expression RBRACKET ASSIGN expression SEMI_COLON
         """
         variable_name = context.IDENTIFIER().getText()
         symbol = self.symbol_table.resolve(variable_name)
@@ -451,11 +441,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitFunctionCall(self, context: MOCPParser.FunctionCallContext):
         """
-        Regra:
-            IDENTIFIER LPAREN arguments? RPAREN
-        | READ LPAREN RPAREN
-        | READC LPAREN RPAREN
-        | READS LPAREN RPAREN
+        Regra: IDENTIFIER LPAREN arguments? RPAREN | READ LPAREN RPAREN | READC LPAREN RPAREN | READS LPAREN RPAREN
         """
 
         # Funções embutidas da linguagem MOCP
@@ -478,25 +464,25 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
                 return self.ERROR
 
             # Recolhe os argumentos passados na chamada
-            arg_exprs = []
+            arg_expressions = []
             if context.arguments():
-                arg_exprs = context.arguments().expression()
+                arg_expressions = context.arguments().expression()
 
             # Verifica se o número de argumentos corresponde ao esperado
             expected_params = symbol.get("param_types", [])
-            if len(arg_exprs) != len(expected_params):
+            if len(arg_expressions) != len(expected_params):
                 self._register_error(
                     context,
                     f"Função '{func_name}' espera {len(expected_params)} argumento(s),"
-                    f" mas recebeu {len(arg_exprs)}.",
+                    f" mas recebeu {len(arg_expressions)}.",
                 )
-                for arg in arg_exprs:
+                for arg in arg_expressions:
                     self._eval(arg)
                 return symbol["type"]
 
             # Verifica o tipo de cada argumento face ao parâmetro esperado
-            for i, arg_expr in enumerate(arg_exprs):
-                arg_type = self._eval(arg_expr)
+            for i, arg_expression in enumerate(arg_expressions):
+                arg_type = self._eval(arg_expression)
                 expected_type, expected_is_array = expected_params[i]
 
                 if arg_type == self.ERROR:
@@ -504,10 +490,10 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
                 if expected_is_array:
                     # O argumento deve ser um array ou string
-                    if isinstance(arg_expr, MOCPParser.PrimaryContext) and arg_expr.IDENTIFIER():
-                        var_name = arg_expr.IDENTIFIER().getText()
-                        var_sym = self.symbol_table.resolve(var_name)
-                        if var_sym and not var_sym.get("is_array", False):
+                    if isinstance(arg_expression, MOCPParser.PrimaryContext) and arg_expression.IDENTIFIER():
+                        variable_name = arg_expression.IDENTIFIER().getText()
+                        variable_symbol = self.symbol_table.resolve(variable_name)
+                        if variable_symbol and not variable_symbol.get("is_array", False):
                             self._register_error(
                                 context,
                                 f"Argumento {i + 1} da função '{func_name}' deve ser um vetor.",
@@ -574,11 +560,8 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         return MAP_C_MOCP.get("int")
         
     def visitExpressionMul(self, context: MOCPParser.ExpressionMulContext):
-        """
-        Regra: expressionMul MULT expressionUnary
-            | expressionMul DIV expressionUnary
-            | expressionMul MOD expressionUnary
-            | expressionUnary
+        """ 
+        Regra: expressionMul MULT expressionUnary | expressionMul DIV expressionUnary | expressionMul MOD expressionUnary | expressionUnary
         """
         # Sem operador: propaga o tipo do operando
         if not context.MULT() and not context.DIV() and not context.MOD():
@@ -651,23 +634,23 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         # Negação lógica: operando tem de ser numérico; resultado é inteiro
         if context.NOT():
-            expr_type = self._eval(context.expressionUnary())
-            if not self._is_numeric(expr_type) and expr_type != self.ERROR:
-                self._register_error(context, MOCPErrorMessages.invalid_operation_for_type(expr_type))
+            expression_type = self._eval(context.expressionUnary())
+            if not self._is_numeric(expression_type) and expression_type != self.ERROR:
+                self._register_error(context, MOCPErrorMessages.invalid_operation_for_type(expression_type))
             return MAP_C_MOCP.get("int")
 
         # Negação aritmética: operando tem de ser numérico; preserva o tipo
         if context.MINUS():
-            expr_type = self._eval(context.expressionUnary())
-            if not self._is_numeric(expr_type) and expr_type != self.ERROR:
-                self._register_error(context, MOCPErrorMessages.invalid_operation_for_type(expr_type))
-            return expr_type
+            expression_type = self._eval(context.expressionUnary())
+            if not self._is_numeric(expression_type) and expression_type != self.ERROR:
+                self._register_error(context, MOCPErrorMessages.invalid_operation_for_type(expression_type))
+            return expression_type
 
-        return self._eval(context.castExpr())
+        return self._eval(context.castExpression())
 
-    def visitCastExpr(self, context: MOCPParser.CastExprContext):
+    def visitCastExpression(self, context: MOCPParser.CastExpressionContext):
         """
-        Regra: LPAREN type RPAREN castExpr | primary
+        Regra: LPAREN type RPAREN castExpression | primary
         """
         if context.type_():
             target_type = context.type_().getText()
@@ -678,7 +661,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
                 return self.ERROR
 
             # A expressão de origem também tem de ser numérica
-            source_type = self._eval(context.castExpr())
+            source_type = self._eval(context.castExpression())
             if not self._is_numeric(source_type) and source_type != self.ERROR:
                 self._register_error(context, "Cast só pode ser aplicado a expressões numéricas.")
                 return self.ERROR
@@ -692,10 +675,8 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
     # ==========================================
 
     def visitStatement(self, context: MOCPParser.StatementContext):
-       """
-        Regra: IF LPAREN expression RPAREN block (ELSE block)?
-            | whileStatement | forStatement | returnStatement
-            | assignStatement | expressionStatement | declaration | block
+        """
+        Regra: IF LPAREN expression RPAREN block (ELSE block)? | whileStatement | forStatement | returnStatement | assignStatement | expressionStatement | declaration | block
         """
         if context.IF():
             # A condição do IF tem de ser numérica
@@ -764,18 +745,18 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
         # Verifica se a variável foi declarada
         if not symbol:
-            self._register_error(context, MOCPErrorMessages.variable_not_declared(var_name))
+            self._register_error(context, MOCPErrorMessages.variable_not_declared(variable_name))
             return None
 
         # Verifica se o identificador não é uma função
         if symbol.get("is_function"):
-            self._register_error(context, MOCPErrorMessages.variable_is_a_function(var_name))
+            self._register_error(context, MOCPErrorMessages.variable_is_a_function(variable_name))
             return None
 
         # Atribuição a elemento de array: valida o índice
         if context.LBRACKET():
             if not symbol.get("is_array"):
-                self._register_error(context, MOCPErrorMessages.variable_is_not_vector(var_name))
+                self._register_error(context, MOCPErrorMessages.variable_is_not_vector(variable_name))
             else:
                 index_type = self._eval(context.expression(0)) or self.ERROR
                 if not self._is_int(index_type) and index_type != self.ERROR:
@@ -794,26 +775,24 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitWriteStatement(self, context: MOCPParser.WriteStatementContext):
         """
-        Regra: WRITE LPAREN expression RPAREN SEMI_COLON
-            | WRITEC LPAREN expression RPAREN SEMI_COLON
-            | WRITEV LPAREN IDENTIFIER RPAREN SEMI_COLON
-            | WRITES LPAREN stringArgument RPAREN SEMI_COLON
+        Regra: WRITE LPAREN expression RPAREN SEMI_COLON | WRITEC LPAREN expression RPAREN SEMI_COLON | WRITEV LPAREN IDENTIFIER RPAREN SEMI_COLON
+               | WRITES LPAREN stringArgument RPAREN SEMI_COLON
         """
         if context.WRITE() or context.WRITEC():
-            expr_type = self._eval(context.expression()) or self.ERROR
+            expression_type = self._eval(context.expression()) or self.ERROR
 
             # WRITEC exige um inteiro (escreve um único carácter)
-            if context.WRITEC() and not self._is_int(expr_type) and expr_type != self.ERROR:
+            if context.WRITEC() and not self._is_int(expression_type) and expression_type != self.ERROR:
                 self._register_error(context, MOCPErrorMessages.WRITEC_INVALID_TYPE)
 
         elif context.WRITEV():
             # WRITEV exige um identificador que seja um array
-            var_name = context.IDENTIFIER().getText()
-            symbol = self.symbol_table.resolve(var_name)
+            variable_name = context.IDENTIFIER().getText()
+            symbol = self.symbol_table.resolve(variable_name)
             if not symbol:
-                self._register_error(context, MOCPErrorMessages.array_not_declared(var_name))
+                self._register_error(context, MOCPErrorMessages.array_not_declared(variable_name))
             elif not symbol.get("is_array"):
-                self._register_error(context, MOCPErrorMessages.write_c_not_vector(var_name))
+                self._register_error(context, MOCPErrorMessages.write_c_not_vector(variable_name))
 
         elif context.WRITES():
             # WRITES escreve uma cadeia de caracteres
@@ -827,10 +806,10 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         if context.IDENTIFIER():
             # Se for um identificador, tem de ser um array (cadeia de caracteres)
-            var_name = context.IDENTIFIER().getText()
-            symbol = self.symbol_table.resolve(var_name)
+            variable_name = context.IDENTIFIER().getText()
+            symbol = self.symbol_table.resolve(variable_name)
             if not symbol:
-                self._register_error(context, MOCPErrorMessages.array_not_declared(var_name))
+                self._register_error(context, MOCPErrorMessages.array_not_declared(variable_name))
             elif not symbol.get("is_array"):
                 self._register_error(context, MOCPErrorMessages.WRITES_INVALID_TYPE)
 
@@ -841,14 +820,64 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
     # ==========================================
 
     def visitReturnStatement(self, context: MOCPParser.ReturnStatementContext):
+        """
+        Regra: RETURN expression? SEMI_COLON
+        """
+        # Assume retorno void se não houver expressão
         return_type = MAP_C_MOCP.get("void")
-
         if context.expression():
-            return_type = self.visit(context.expression())
+            return_type = self._eval(context.expression())
 
+        # Função void não pode retornar um valor
         if self.current_function_type == MAP_C_MOCP.get("void") and return_type != MAP_C_MOCP.get("void"):
             self._register_error(context, MOCPErrorMessages.RETURN_TYPE_VOID)
+
+        # Função não-void tem de retornar um valor
         elif self.current_function_type != MAP_C_MOCP.get("void") and return_type == MAP_C_MOCP.get("void"):
-            self._register_error(context,MOCPErrorMessages.unexpected_return_type(self.current_function_type))
+            self._register_error(context, MOCPErrorMessages.unexpected_return_type(self.current_function_type))
+
+        # Promoção implícita de double para int é permitida (sem erro)
         elif self.current_function_type == MAP_C_MOCP.get("int") and return_type == MAP_C_MOCP.get("double"):
-            self._register_error(context, MOCPErrorMessages.RETURN_TYPE_INVALID)
+            pass
+
+        return None
+
+    # ==========================================
+    # 13. FUNÇÕES AUXILIARES PARA TIPOS
+    # ==========================================
+
+    def _types_compatible(self, expected, actual):
+        """
+        Verifica se os tipos são compatíveis, considerando regras de promoção e casos especiais.
+        """
+        if actual == self.ERROR:
+            return True
+        if expected == actual:
+            return True
+        if expected == MAP_C_MOCP.get("int") and actual == MAP_C_MOCP.get("double"):
+            return True
+        if expected == MAP_C_MOCP.get("double") and actual == MAP_C_MOCP.get("int"):
+            return True
+        if actual == self.NUMERIC:
+            return expected in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double")]
+        if actual == self.STRING_ARRAY and expected == MAP_C_MOCP.get("int"):
+            return True
+        return False
+    
+    def _is_numeric(self, t):
+        """
+        Retorna True se o tipo for numérico (inteiro, real ou numérico).
+        """
+        return t in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double"), self.NUMERIC]
+
+    def _is_int(self, t):
+        """
+        Retorna True se o tipo for inteiro ou numérico.
+        """
+        return t in [MAP_C_MOCP.get("int"), self.NUMERIC]
+
+    def _is_real(self, t):
+        """
+        Retorna True se o tipo for real (double).
+        """
+        return t == MAP_C_MOCP.get("double")
