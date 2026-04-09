@@ -794,34 +794,47 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitWriteStatement(self, context: MOCPParser.WriteStatementContext):
         """
-        Regra: WRITE(expression); | WRITEC(expression); | WRITEV(id); | WRITES(stringArg);
+        Regra: WRITE LPAREN expression RPAREN SEMI_COLON
+            | WRITEC LPAREN expression RPAREN SEMI_COLON
+            | WRITEV LPAREN IDENTIFIER RPAREN SEMI_COLON
+            | WRITES LPAREN stringArgument RPAREN SEMI_COLON
         """
         if context.WRITE() or context.WRITEC():
-            expression_type = self.visit(context.expression())
+            expr_type = self._eval(context.expression()) or self.ERROR
 
-            if context.WRITEC() and expression_type != MAP_C_MOCP.get("int") and expression_type != self.ERROR:
-                self._register_error(context,MOCPErrorMessages.WRITEC_INVALID_TYPE)
+            # WRITEC exige um inteiro (escreve um único carácter)
+            if context.WRITEC() and not self._is_int(expr_type) and expr_type != self.ERROR:
+                self._register_error(context, MOCPErrorMessages.WRITEC_INVALID_TYPE)
 
         elif context.WRITEV():
-            variable_name = context.IDENTIFIER().getText()
-            symbol = self.symbol_table.resolve(variable_name)
-
+            # WRITEV exige um identificador que seja um array
+            var_name = context.IDENTIFIER().getText()
+            symbol = self.symbol_table.resolve(var_name)
             if not symbol:
-                self._register_error(context, MOCPErrorMessages.array_not_declared(variable_name))
+                self._register_error(context, MOCPErrorMessages.array_not_declared(var_name))
             elif not symbol.get("is_array"):
-                self._register_error(context,MOCPErrorMessages.write_c_not_vector(variable_name))
+                self._register_error(context, MOCPErrorMessages.write_c_not_vector(var_name))
 
         elif context.WRITES():
-            argument_context = context.stringArgument()
+            # WRITES escreve uma cadeia de caracteres
+            self._eval(context.stringArgument())
 
-            if argument_context.IDENTIFIER():
-                variable_name = argument_context.IDENTIFIER().getText()
-                symbol = self.symbol_table.resolve(variable_name)
+        return None
 
-                if not symbol:
-                    self._register_error(context, MOCPErrorMessages.array_not_declared(variable_name))
-                elif not symbol.get("is_array"):
-                    self._register_error(context,MOCPErrorMessages.WRITES_INVALID_TYPE)
+    def visitStringArgument(self, context: MOCPParser.StringArgumentContext):
+        """
+        Regra: STRING_LITERAL | IDENTIFIER
+        """
+        if context.IDENTIFIER():
+            # Se for um identificador, tem de ser um array (cadeia de caracteres)
+            var_name = context.IDENTIFIER().getText()
+            symbol = self.symbol_table.resolve(var_name)
+            if not symbol:
+                self._register_error(context, MOCPErrorMessages.array_not_declared(var_name))
+            elif not symbol.get("is_array"):
+                self._register_error(context, MOCPErrorMessages.WRITES_INVALID_TYPE)
+
+        return None
 
     # ==========================================
     # 12. RETORNO DE FUNÇÕES
