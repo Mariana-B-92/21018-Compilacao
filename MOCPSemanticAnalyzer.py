@@ -692,45 +692,101 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
     # ==========================================
 
     def visitStatement(self, context: MOCPParser.StatementContext):
+       """
+        Regra: IF LPAREN expression RPAREN block (ELSE block)?
+            | whileStatement | forStatement | returnStatement
+            | assignStatement | expressionStatement | declaration | block
         """
-        Regra: IF (expression) block (ELSE block)? | whileStatement | forStatement | returnStatement | assignStatement
-        | expressionStatement | declaration | block
-        """
-
         if context.IF():
-            condition_type = self.visit(context.expression())
-
-            if condition_type not in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double"), self.ERROR]:
+            # A condição do IF tem de ser numérica
+            condition_type = self._eval(context.expression())
+            if not self._is_numeric(condition_type) and condition_type != self.ERROR:
                 self._register_error(context, MOCPErrorMessages.IF_CONDITION_NOT_NUMERICAL)
 
+            # Visita o bloco then e, se existir, o bloco else
             for block in context.block():
                 self.visit(block)
-
-            return
+            return None
 
         self.visitChildren(context)
+        return None
 
     def visitWhileStatement(self, context: MOCPParser.WhileStatementContext):
-        condition_type = self.visit(context.expression())
-
-        if condition_type not in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double"), self.ERROR]:
+        """
+        Regra: WHILE LPAREN expression RPAREN block
+        """
+        # A condição do WHILE tem de ser numérica
+        condition_type = self._eval(context.expression())
+        if not self._is_numeric(condition_type) and condition_type != self.ERROR:
             self._register_error(context, MOCPErrorMessages.WHILE_CONDITION_NOT_NUMERICAL)
 
         self.visit(context.block())
+        return None
 
     def visitForStatement(self, context: MOCPParser.ForStatementContext):
-        # Visita a inicialização e atualização (se existirem)
-        for expression_or_assignment in context.expressionOrAssign():
-            self.visit(expression_or_assignment)
+        """
+        Regra: FOR LPAREN expressionOrAssign? SEMI_COLON expression? SEMI_COLON expressionOrAssign? RPAREN block
+        """
+        # Inicialização do ciclo
+        if context.expressionOrAssign(0):
+            self._eval(context.expressionOrAssign(0))
 
-        # Visita a condição do meio (se existir)
+        # A condição do FOR tem de ser numérica
         if context.expression():
-            condition_type = self.visit(context.expression())
-
-            if condition_type not in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double"), self.ERROR]:
+            condition_type = self._eval(context.expression())
+            if not self._is_numeric(condition_type) and condition_type != self.ERROR:
                 self._register_error(context, MOCPErrorMessages.FOR_CONDITION_NOT_NUMERICAL)
 
+        # Incremento/atualização do ciclo
+        if context.expressionOrAssign(1):
+            self._eval(context.expressionOrAssign(1))
+
         self.visit(context.block())
+        return None
+
+    def visitExpressionOrAssign(self, context: MOCPParser.ExpressionOrAssignContext):
+        """
+        Regra: IDENTIFIER (LBRACKET expression RBRACKET)? ASSIGN expression | expression
+        """
+        # Distingue entre uma atribuição e uma expressão simples
+        if context.ASSIGN():
+            self._visit_assign_in_for(context)
+        else:
+            self._eval(context.expression())
+        return None
+
+    def _visit_assign_in_for(self, context: MOCPParser.ExpressionOrAssignContext):
+        """
+        Auxiliar de visitForStatement: valida e avalia uma atribuição na inicialização ou incremento do FOR.
+        """
+        variable_name = context.IDENTIFIER().getText()
+        symbol = self.symbol_table.resolve(variable_name)
+
+        # Verifica se a variável foi declarada
+        if not symbol:
+            self._register_error(context, MOCPErrorMessages.variable_not_declared(var_name))
+            return None
+
+        # Verifica se o identificador não é uma função
+        if symbol.get("is_function"):
+            self._register_error(context, MOCPErrorMessages.variable_is_a_function(var_name))
+            return None
+
+        # Atribuição a elemento de array: valida o índice
+        if context.LBRACKET():
+            if not symbol.get("is_array"):
+                self._register_error(context, MOCPErrorMessages.variable_is_not_vector(var_name))
+            else:
+                index_type = self._eval(context.expression(0)) or self.ERROR
+                if not self._is_int(index_type) and index_type != self.ERROR:
+                    self._register_error(context, MOCPErrorMessages.ARRAY_INVALID_INDEX)
+
+        # Verifica compatibilidade de tipos entre a variável e a expressão atribuída
+        assigned_expression_context = context.expression(-1)
+        expression_type = self._eval(assigned_expression_context) or self.ERROR
+        if expression_type != self.ERROR and not self._types_compatible(symbol["type"], expression_type):
+            self._register_error(context, MOCPErrorMessages.variable_wrong_type(variable_name))
+        return None    
 
     # ==========================================
     # 11. INSTRUÇÕES DE ENTRADA / SAÍDA (MOCP)
