@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 from MOCPErrorMessages import MOCPErrorMessages
 from MOCPParser import MOCPParser
 from MOCPSymbolTable import MOCPSymbolTable
@@ -9,6 +11,8 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
     Percorre a Árvore de Sintaxe Abstrata para validar as regras semânticas.
     """
     ERROR = "erro"
+    NUMERIC = "numeric"
+    STRING_ARRAY = "string_array"
 
     def __init__(self):
         self.current_declaration_type = None
@@ -16,6 +20,10 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         self.declared_prototypes = set()
         self.errors = []
         self.symbol_table = MOCPSymbolTable()
+
+    # ==========================================
+    # 0. MÉTODOS AUXILIARES GERAIS
+    # ==========================================
 
     def _register_error(self, context, message):
         """
@@ -25,6 +33,12 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         line = context.start.line
 
         self.errors.append(f"[Erro Semântico] linha {line}:{column} - {message}")
+
+    def _eval(self, node) -> Any:
+        """
+        Função auxiliar para avaliar expressões e obter seus tipos.
+        """
+        return cast(Any, self.visit(node))
 
     # ==========================================
     # 1. PONTO DE ENTRADA (Regra: program)
