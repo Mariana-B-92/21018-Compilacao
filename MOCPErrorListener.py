@@ -10,54 +10,60 @@ class MOCPErrorListener(ErrorListener):
     """
 
     def __init__(self):
-        """
-        Inicializa o listener e a lista de erros capturados.
-        """
         super().__init__()
         self.errors = []
+        self._lex_error_lines = set()
+        self._has_unrecoverable_lex_error = False
 
     def _register(self, message):
-        """
-        Regista a mensagem de erro na lista de erros internos.
-        """
         self.errors.append(message)
 
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
-        """
-        Ponto de entrada para tratamento de erros léxicos e sintáticos.
-        Analisa a mensagem original do ANTLR e gera uma mensagem adaptada
-        com sugestões de correção para a linguagem MOCP.
-        """
         symbol = getattr(offendingSymbol, "text", "(símbolo inválido)")
         suggestion, message = "", ""
 
+        is_lexer_error = "token recognition error" in msg
 
-        # Deteta palavras-chave do C (sempre considerado erro):
+        # Suprime erros de EOF em cascata se já houver erros registados
+        if symbol == '<EOF>' and self.errors:
+            return
+
+        # --- Supressão de erros sintáticos em cascata ---
+        if not is_lexer_error and (line in self._lex_error_lines or self._has_unrecoverable_lex_error):
+            return
+
+        # Deteta palavras-chave do C:
         if symbol in FORBIDDEN_C_WORDS:
             suggestion = MAP_C_MOCP.get(symbol, 'equivalente em português')
-            message = f"[Erro Sintático] Palavra-chave inválida '{symbol}' (linha {line}, coluna {column}). Use '{suggestion}'."
+            if symbol in FORBIDDEN_C_WORDS:
+                suggestion = MAP_C_MOCP.get(symbol)
+                if suggestion:
+                    message = f"[Erro Sintático] Palavra-chave inválida '{symbol}' (linha {line}, coluna {column}). Use '{suggestion}'."
+                else:
+                    message = f"[Erro Sintático] Palavra-chave inválida '{symbol}' (linha {line}, coluna {column}). Apenas existem os tipos 'inteiro' e 'real'."
 
         # Deteta operadores proibidos em MOCP:
         elif symbol in FORBIDDEN_C_OPERATORS:
             message = f"[Erro Sintático] Operador '{symbol}' não é suportado na MOCP (linha {line}, coluna {column})."
 
         # Erro léxico (caracteres inválidos):
-        elif "token recognition error" in msg:
+        elif is_lexer_error:
             match = re.search(r"at:\s*'([^']+)'", msg)
             wrong_char = match.group(1) if match else symbol
 
             if wrong_char == '#':
                 suggestion = "Diretivas de pré-processador (#include, #define) não são suportadas."
+                self._has_unrecoverable_lex_error = True
             elif any(char in wrong_char for char in 'áàãâéêíóôõúçÁÀÃÂÉÊÍÓÔÕÚÇ'):
                 suggestion = "Identificadores não podem conter acentos."
 
+            self._lex_error_lines.add(line)
             message = f"[Erro Léxico] Caractere inválido '{wrong_char}' (linha {line}, coluna {column}). {suggestion}"
 
         # Símbolo inesperado:
         elif "extraneous input" in msg:
             if symbol == ',':
                 suggestion = " Verifique os separadores; em 'para' usam-se ';'."
-
             message = f"[Erro Sintático] Símbolo inesperado '{symbol}' (linha {line}, coluna {column}). {suggestion}"
 
         # Nenhuma alternativa válida na gramática:
@@ -71,6 +77,8 @@ class MOCPErrorListener(ErrorListener):
 
             if expected == 'SEMI_COLON':
                 suggestion = "Todas as instruções terminam com ';'."
+            elif expected == '{':
+                suggestion = "Todos os blocos devem estar entre chavetas { }, mesmo quando têm uma só instrução."
 
             message = f"[Erro Sintático] Falta '{translated_expected}' perto de '{symbol}' (linha {line}, coluna {column}). {suggestion}"
 
@@ -78,7 +86,6 @@ class MOCPErrorListener(ErrorListener):
         elif "mismatched input" in msg and "expecting" in msg:
             expected = format_expected(recognizer, e)
             translated_expected = translate_tokens_list(expected)
-
             message = f"[Erro Sintático] Símbolo '{symbol}' inesperado. Esperado: {translated_expected} (linha {line}, coluna {column})."
 
         # Caso genérico:
