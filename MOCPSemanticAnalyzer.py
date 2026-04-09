@@ -404,41 +404,46 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitAssignStatement(self, context: MOCPParser.AssignStatementContext):
         """
-        Regra: (IDENTIFIER | IDENTIFIER [expression]) = expression;
+        Regra: IDENTIFIER ASSIGN expression SEMI_COLON
+            | IDENTIFIER LBRACKET expression RBRACKET ASSIGN expression SEMI_COLON
         """
         variable_name = context.IDENTIFIER().getText()
         symbol = self.symbol_table.resolve(variable_name)
 
+        # Verifica se a variável foi declarada
         if not symbol:
             self._register_error(context, MOCPErrorMessages.variable_not_declared(variable_name))
-            return self.ERROR
+            return None
 
+        # Verifica se o identificador não é uma função
         if symbol.get("is_function"):
             self._register_error(context, MOCPErrorMessages.variable_is_a_function(variable_name))
-            return self.ERROR
+            return None
 
         expressions = context.expression()
         assigned_expression_context = expressions[-1]
-
-        expression_type = self.visit(assigned_expression_context)
-
-        if expression_type != self.ERROR:
-            variable_type = symbol["type"]
-
-            if variable_type == MAP_C_MOCP.get("int") and expression_type == MAP_C_MOCP.get("double"):
-                self._register_error(context,MOCPErrorMessages.variable_wrong_type(variable_name))
-
+        
+        # Atribuição a elemento de array: valida índice e tipo
         if context.LBRACKET():
             if not symbol.get("is_array"):
                 self._register_error(context, MOCPErrorMessages.variable_is_not_vector(variable_name))
-            else:
-                index_expression_context = expressions
-                index_type = self.visit(index_expression_context)
+                return None
 
-                if index_type != MAP_C_MOCP.get("int") and index_type != self.ERROR:
-                    self._register_error(context, MOCPErrorMessages.ARRAY_INVALID_INDEX)
-        elif symbol.get("is_array"):
-            self._register_error(context, MOCPErrorMessages.required_index(variable_name))
+            index_type = self._eval(expressions[0]) or self.ERROR
+            if not self._is_int(index_type) and index_type != self.ERROR:
+                self._register_error(context, MOCPErrorMessages.ARRAY_INVALID_INDEX)
+
+        # Atribuição escalar: rejeita uso de array sem índice
+        else:
+            if symbol.get("is_array"):
+                self._register_error(context, MOCPErrorMessages.required_index(variable_name))
+                return None
+
+        # Verifica compatibilidade de tipos entre a variável e a expressão atribuída
+        expression_type = self._eval(assigned_expression_context)
+        if expression_type != self.ERROR and not self._types_compatible(symbol["type"], expression_type):
+            self._register_error(context, MOCPErrorMessages.variable_wrong_type(variable_name))
+        return None
 
     # ==========================================
     # 8. CHAMADAS DE FUNÇÃO
