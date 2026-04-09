@@ -39,6 +39,26 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         Função auxiliar para avaliar expressões e obter seus tipos.
         """
         return cast(Any, self.visit(node))
+    
+    def _extract_identifier(self, expr_node):
+        """
+        Se a expressão for um identificador simples (sem operadores, índices, etc.),
+        retorna o nome do identificador. Caso contrário, retorna None.
+        """
+        if expr_node is None:
+            return None
+
+        # Se já for um PrimaryContext, verifica diretamente
+        if isinstance(expr_node, MOCPParser.PrimaryContext):
+            if expr_node.IDENTIFIER() and not expr_node.LBRACKET():
+                return expr_node.IDENTIFIER().getText()
+            return None
+
+        # Só desce se houver exatamente 1 filho (sem operadores intermédios)
+        if expr_node.getChildCount() == 1:
+            return self._extract_identifier(expr_node.getChild(0))
+
+        return None
 
     # ==========================================
     # 1. PONTO DE ENTRADA (Regra: program)
@@ -229,6 +249,8 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Se for uma leitura (reads), trata-se como array de inteiros
         if context.READS():
             is_array = True
+            if self.current_declaration_type != MAP_C_MOCP.get("int"):
+                self._register_error(context, "Variável inicializada com 'lers()' tem de ser do tipo 'inteiro[]'.")
             decl_type = MAP_C_MOCP.get("int")
 
         # Regista a variável na tabela de símbolos
@@ -244,9 +266,9 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Verifica a compatibilidade de tipos na inicialização escalar
         if context.expression() and not context.LBRACKET():
             expression_type = self._eval(context.expression())
-            if expression_type != self.ERROR and not self._types_compatible(decl_type, expression_type):
+            if expression_type != self.ERROR and not self._types_compatible_strict(decl_type, expression_type):
                 self._register_error(context, MOCPErrorMessages.variable_wrong_type(variable_name))
-
+        
         # Verifica o tamanho e os elementos na inicialização de arrays
         elif context.arrayBlock():
             if context.NUMBER():
@@ -431,7 +453,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
         # Verifica compatibilidade de tipos entre a variável e a expressão atribuída
         expression_type = self._eval(assigned_expression_context)
-        if expression_type != self.ERROR and not self._types_compatible(symbol["type"], expression_type):
+        if expression_type != self.ERROR and not self._types_compatible_strict(symbol["type"], expression_type):
             self._register_error(context, MOCPErrorMessages.variable_wrong_type(variable_name))
         return None
 
@@ -489,9 +511,8 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
                     continue
 
                 if expected_is_array:
-                    # O argumento deve ser um array ou string
-                    if isinstance(arg_expression, MOCPParser.PrimaryContext) and arg_expression.IDENTIFIER():
-                        variable_name = arg_expression.IDENTIFIER().getText()
+                    variable_name = self._extract_identifier(arg_expression)
+                    if variable_name:
                         variable_symbol = self.symbol_table.resolve(variable_name)
                         if variable_symbol and not variable_symbol.get("is_array", False):
                             self._register_error(
@@ -737,36 +758,41 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         return None
 
     def _visit_assign_in_for(self, context: MOCPParser.ExpressionOrAssignContext):
-        """
-        Auxiliar de visitForStatement: valida e avalia uma atribuição na inicialização ou incremento do FOR.
-        """
         variable_name = context.IDENTIFIER().getText()
         symbol = self.symbol_table.resolve(variable_name)
 
-        # Verifica se a variável foi declarada
         if not symbol:
             self._register_error(context, MOCPErrorMessages.variable_not_declared(variable_name))
             return None
 
-        # Verifica se o identificador não é uma função
         if symbol.get("is_function"):
             self._register_error(context, MOCPErrorMessages.variable_is_a_function(variable_name))
             return None
 
-        # Atribuição a elemento de array: valida o índice
+        # Se for uma atribuição a um elemento de array
         if context.LBRACKET():
             if not symbol.get("is_array"):
                 self._register_error(context, MOCPErrorMessages.variable_is_not_vector(variable_name))
             else:
-                index_type = self._eval(context.expression(0)) or self.ERROR
-                if not self._is_int(index_type) and index_type != self.ERROR:
-                    self._register_error(context, MOCPErrorMessages.ARRAY_INVALID_INDEX)
+                # O primeiro 'expression' é o índice
+                index_expr = context.expression(0)
+                if index_expr:
+                    index_type = self._eval(index_expr)
+                    if not self._is_int(index_type) and index_type != self.ERROR:
+                        self._register_error(context, MOCPErrorMessages.ARRAY_INVALID_INDEX)
 
-        # Verifica compatibilidade de tipos entre a variável e a expressão atribuída
-        assigned_expression_context = context.expression(-1)
-        expression_type = self._eval(assigned_expression_context) or self.ERROR
-        if expression_type != self.ERROR and not self._types_compatible(symbol["type"], expression_type):
+        # Obter a expressão do lado direito (último elemento da lista de expressões)
+        expr_list = context.expression()
+        assigned_expr = expr_list[-1] if expr_list else None
+
+        if not assigned_expr:
+            self._register_error(context, "Expressão de atribuição inválida no ciclo 'para'.")
+            return None
+
+        expression_type = self._eval(assigned_expr)
+        if expression_type != self.ERROR and not self._types_compatible_strict(symbol["type"], expression_type):
             self._register_error(context, MOCPErrorMessages.variable_wrong_type(variable_name))
+
         return None    
 
     # ==========================================
@@ -780,6 +806,10 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         if context.WRITE() or context.WRITEC():
             expression_type = self._eval(context.expression()) or self.ERROR
+
+            # WRITE aceita qualquer tipo, mas não strings (arrays de caracteres)
+            if context.WRITE() and expression_type == self.STRING_ARRAY:
+                self._register_error(context, "Função 'escrever()' não aceita strings. Use 'escrevers()'.")
 
             # WRITEC exige um inteiro (escreve um único carácter)
             if context.WRITEC() and not self._is_int(expression_type) and expression_type != self.ERROR:
@@ -858,6 +888,24 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
             return True
         if expected == MAP_C_MOCP.get("double") and actual == MAP_C_MOCP.get("int"):
             return True
+        if actual == self.NUMERIC:
+            return expected in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double")]
+        if actual == self.STRING_ARRAY and expected == MAP_C_MOCP.get("int"):
+            return True
+        return False
+    
+    def _types_compatible_strict(self, expected, actual):
+        """
+        Versão estrita para atribuições — segue as regras do C:
+        - inteiro -> real é permitido (promoção implícita)
+        - real -> inteiro NÃO é permitido sem cast explícito
+        """
+        if actual == self.ERROR:
+            return True
+        if expected == actual:
+            return True
+        if expected == MAP_C_MOCP.get("double") and actual == MAP_C_MOCP.get("int"):
+            return True  # promoção implícita inteiro -> real
         if actual == self.NUMERIC:
             return expected in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double")]
         if actual == self.STRING_ARRAY and expected == MAP_C_MOCP.get("int"):
