@@ -1,3 +1,4 @@
+/* Fatorial Recursivo */
 inteiro fact(inteiro);
 vazio principal(vazio);
 
