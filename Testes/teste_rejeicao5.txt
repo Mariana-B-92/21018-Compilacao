@@ -6,3 +6,4 @@ vazio principal(vazio);
 vazio principal(vazio) {
     real s[] = lers();      /* errado: lers() só pode ser inteiro[] */
     escrever("abc");        /* errado: escrever() não aceita strings */
+}
