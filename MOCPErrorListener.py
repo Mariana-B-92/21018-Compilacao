@@ -28,19 +28,17 @@ class MOCPErrorListener(ErrorListener):
         if symbol == '<EOF>' and self.errors:
             return
 
-        # --- Supressão de erros sintáticos em cascata ---
+        # Supressão de erros sintáticos em cascata
         if not is_lexer_error and (line in self._lex_error_lines or self._has_unrecoverable_lex_error):
             return
 
         # Deteta palavras-chave do C:
         if symbol in FORBIDDEN_C_WORDS:
-            suggestion = MAP_C_MOCP.get(symbol, 'equivalente em português')
-            if symbol in FORBIDDEN_C_WORDS:
-                suggestion = MAP_C_MOCP.get(symbol)
-                if suggestion:
-                    message = f"[Erro Sintático] Palavra-chave inválida '{symbol}' (linha {line}, coluna {column}). Use '{suggestion}'."
-                else:
-                    message = f"[Erro Sintático] Palavra-chave inválida '{symbol}' (linha {line}, coluna {column}). Apenas existem os tipos 'inteiro' e 'real'."
+            suggestion = MAP_C_MOCP.get(symbol)
+            if suggestion:
+                message = f"[Erro Sintático] Palavra-chave inválida '{symbol}' (linha {line}, coluna {column}). Use '{suggestion}'."
+            else:
+                message = f"[Erro Sintático] Palavra-chave inválida '{symbol}' (linha {line}, coluna {column}). Apenas existem os tipos 'inteiro' e 'real'."
 
         # Deteta operadores proibidos em MOCP:
         elif symbol in FORBIDDEN_C_OPERATORS:
@@ -86,10 +84,10 @@ class MOCPErrorListener(ErrorListener):
         elif "mismatched input" in msg and "expecting" in msg:
             expected = format_expected(recognizer, e)
             translated_expected = translate_tokens_list(expected)
-            message = f"[Erro Sintático] Símbolo '{symbol}' inesperado. Esperado: {translated_expected} (linha {line}, coluna {column})."
 
-        # Caso genérico:
-        else:
-            message = f"[Erro Sintático] Erro perto de '{symbol}' (linha {line}, coluna {column}): {msg}"
+            if symbol in ('<', '<=', '>', '>=', '==', '!=') and ')' in expected:
+                message = f"[Erro Sintático] Condição inválida: não é permitido encadear operadores relacionais (linha {line}, coluna {column}). As condições devem ser da forma 'Expr OpCond Expr'."
+            else:
+                message = f"[Erro Sintático] Símbolo '{symbol}' inesperado. Esperado: {translated_expected} (linha {line}, coluna {column})."
 
         self._register(message)
