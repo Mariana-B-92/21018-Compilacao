@@ -1,6 +1,0 @@
-/* Inválido: Todos os blocos devem estar entre chavetas, mesmo quando têm uma só instrução. */
-vazio principal(vazio);
-vazio principal(vazio) {
-    se (1)
-        escrever(1);
-}
