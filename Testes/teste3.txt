@@ -1,9 +1,12 @@
-inteiro foo(inteiro);
+/* Exemplo de condição */
 vazio principal(vazio);
 
-inteiro foo(inteiro a) {
-    retornar a;
-}
-
 vazio principal(vazio) {
+    inteiro x = 5, y = 10;
+
+    se (x > y) {
+        y = x;
+    } senao {
+        x = y;
+    }
 }
