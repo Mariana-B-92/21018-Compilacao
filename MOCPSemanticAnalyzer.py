@@ -632,14 +632,14 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitExpressionRelational(self, context: MOCPParser.ExpressionRelationalContext):
         """
-        Regra: < | <= | > | >=
+        Regra: expressionAdd relationalOp expressionAdd | expressionAdd
         """
         # Sem operador: propaga o tipo do operando
         if not context.relationalOp():
-            return self._eval(context.expressionAdd())
+            return self._eval(context.expressionAdd(0))
 
-        left_type = self._eval(context.expressionRelational())
-        right_type = self._eval(context.expressionAdd())
+        left_type = self._eval(context.expressionAdd(0))
+        right_type = self._eval(context.expressionAdd(1))
 
         # Ambos os operandos têm de ser numéricos
         if left_type != self.ERROR and right_type != self.ERROR:
