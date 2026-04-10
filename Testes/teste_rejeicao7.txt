@@ -1,0 +1,9 @@
+/* Ciclo enquanto */
+/* Regra: O ciclo enquanto deve ter a forma “enquanto (expressão) { bloco }”. -inválido */
+vazio principal(vazio);
+vazio principal(vazio) {
+    inteiro x = 10;
+    enquanto x > 0 {
+        x = x - 1;
+    }
+}

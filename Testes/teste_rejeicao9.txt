@@ -1,0 +1,9 @@
+/* Condições Simplificadas */
+/* Regra: As condições devem ser simples (ou uma única expressão ou uma comparação simples “Expr op Expr”), sem composições ambíguas. - inválido */
+vazio principal(vazio);
+vazio principal(vazio) {
+    inteiro x = 5, y = 10, z = 15;
+
+    se (x < y < z) {
+    }
+}
