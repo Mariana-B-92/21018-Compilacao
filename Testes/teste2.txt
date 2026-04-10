@@ -1,3 +1,4 @@
+/* Média de um vetor */
 real media(real[], inteiro);
 vazio principal(vazio);
 
