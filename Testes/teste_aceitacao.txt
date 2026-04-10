@@ -1,0 +1,118 @@
+/* Teste Válido Completo */
+/* Cobre: tipos, variáveis simples e vetores, inicialização, casting, */
+/* estruturas de controlo, ciclos, funções de IO, recursão e protótipos. */
+
+/* Protótipos - devem aparecer antes de qualquer definição */
+inteiro somaDigitos(inteiro);
+inteiro fatorial(inteiro);
+vazio imprimirVetor(inteiro[], inteiro);
+vazio principal(vazio);
+
+/* Função recursiva: soma os dígitos de um número */
+inteiro somaDigitos(inteiro n) {
+    se (n <= 0) {
+        retornar 0;
+    } senao {
+        retornar n % 10 + somaDigitos(n / 10);
+    }
+}
+
+/* Função recursiva: calcula o fatorial */
+inteiro fatorial(inteiro n) {
+    se (n <= 1) {
+        retornar 1;
+    } senao {
+        retornar n * fatorial(n - 1);
+    }
+}
+
+/* Função que imprime um vetor de inteiros */
+vazio imprimirVetor(inteiro v[], inteiro tamanho) {
+    inteiro i;
+    para (i = 0; i < tamanho; i = i + 1) {
+        escrever(v[i]);
+    }
+}
+
+vazio principal(vazio) {
+    /* Declaração de variáveis simples sem inicialização */
+    inteiro i, n, c;
+
+    /* Declaração com inicialização */
+    inteiro m = 1;
+    real x = 3.14, y = x / 2;
+
+    /* Vetor de inteiros com tamanho fixo */
+    inteiro v[5];
+
+    /* Vetor com inicialização direta */
+    inteiro w[] = {1, 2, 3, 4, 5};
+
+    /* Leitura de inteiro */
+    inteiro a = ler();
+
+    /* Leitura de real */
+    real b = ler();
+
+    /* Leitura de caráter (ASCII) */
+    inteiro ch = lerc();
+
+    /* Leitura de string (vetor de inteiros terminado em 0) */
+    inteiro s[] = lers();
+
+    /* Casting: inteiro -> real e real -> inteiro */
+    real r = (real) a;
+    inteiro k = (inteiro) x;
+
+    /* Ciclo para: leitura de vetor */
+    para (i = 0; i < 5; i = i + 1) {
+        v[i] = ler();
+    }
+
+    /* Ciclo enquanto */
+    enquanto (m < 10) {
+        m = m + 1;
+    }
+
+    /* Condição se/senao */
+    se (a > 0) {
+        escrever(fatorial(a));
+    } senao {
+        escrever(0);
+    }
+
+    /* Operadores lógicos */
+    se (a > 0 && b > 0) {
+        escrever(somaDigitos(a));
+    }
+
+    se (a == 0 || b == 0) {
+        escrevers("Um dos valores e zero.");
+    }
+
+    se (!a) {
+        escrevers("a e zero.");
+    }
+
+    /* Escrita de variável simples */
+    escrever(k);
+
+    /* Escrita de caráter */
+    escreverc(ch);
+
+    /* Escrita de vetor */
+    escreverv(w);
+
+    /* Escrita de string literal */
+    escrevers("Fim do programa.");
+
+    /* Escrita de string lida */
+    escrevers(s);
+
+    /* Chamada de função com resultado */
+    n = fatorial(5);
+    escrever(n);
+
+    /* Impressão de vetor via função */
+    imprimirVetor(v, 5);
+}
