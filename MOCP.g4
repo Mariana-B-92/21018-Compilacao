@@ -235,8 +235,8 @@ equalityOp
 
 /* Expressões com operadores relacionais (<, <=, >, >=). */
 expressionRelational
-    : expressionAdd
-    | expressionRelational relationalOp expressionAdd
+    : expressionAdd relationalOp expressionAdd
+    | expressionAdd
     ;
 
 /* Operadores relacionais (<, <=, >, >=). */
