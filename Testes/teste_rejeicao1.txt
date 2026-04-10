@@ -1,0 +1,5 @@
+/* Diretivas Pré-processuais (não permitidas)*/
+/* Regra: Não pode haver diretivas (ex.: “#include”) no código. - inválido*/
+#include <stdio.h>
+inteiro identidade(inteiro);
+vazio principal(vazio);

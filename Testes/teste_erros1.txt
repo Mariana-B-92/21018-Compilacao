@@ -1,4 +1,0 @@
-/* Inválido: Não existem diretivas # (como #include). */
-#include <stdio.h>
-inteiro identidade(inteiro);
-vazio principal(vazio);
