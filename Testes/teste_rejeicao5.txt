@@ -1,0 +1,8 @@
+/* Funções de Leitura e Escrita mal utilizadas - inválido */
+/* Regra 1: lers() só pode ser usado para inicializar vetores do tipo 'inteiro[]', não 'real[]'. */
+/* Regra 2: escrever() é apenas para variáveis simples. Para strings use escrevers(). */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    real s[] = lers();      /* errado: lers() só pode ser inteiro[] */
+    escrever("abc");        /* errado: escrever() não aceita strings */
