@@ -63,6 +63,21 @@ RBRACE      : '}' ;
 LPAREN      : '(' ;
 RPAREN      : ')' ;
 
+// Operadores de C não suportados em MOCP
+INC     : '++' ;
+DEC     : '--' ;
+ADD_ASS : '+=' ;
+SUB_ASS : '-=' ;
+MUL_ASS : '*=' ;
+DIV_ASS : '/=' ;
+MOD_ASS : '%=' ;
+LSHIFT  : '<<' ;
+RSHIFT  : '>>' ;
+BITAND  : '&' ;
+BITOR   : '|' ;
+BITXOR  : '^' ;
+BITNOT  : '~' ;
+
 // Literais e identificadores:
 STRING_LITERAL  : '"' ( '\\' . | ~["\\\r\n] )* '"'  ;   // String literal com escapes.
 REAL_NUM        : [0-9]+ '.' [0-9]+                 ;   // Literal real.
