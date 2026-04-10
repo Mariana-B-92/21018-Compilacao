@@ -1,5 +1,0 @@
-/* Inválido: Apenas existem os tipos inteiro e real.*/
-inteiro identidade(inteiro);
-vazio principal(vazio);
-
-float x;
