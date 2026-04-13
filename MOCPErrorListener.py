@@ -1,5 +1,5 @@
-from antlr4.error.ErrorListener import ErrorListener
 import re
+from antlr4.error.ErrorListener import ErrorListener
 from constants import FORBIDDEN_C_OPERATORS, FORBIDDEN_C_WORDS, MAP_C_MOCP
 from utils import format_expected, translate_token, translate_tokens_list
 

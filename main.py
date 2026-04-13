@@ -1,36 +1,10 @@
-import shutil
 import sys
-import subprocess
 from antlr4 import *
 from MOCPLexer import MOCPLexer
 from MOCPParser import MOCPParser
 from MOCPErrorListener import MOCPErrorListener
 from MOCPSemanticAnalyzer import MOCPSemanticAnalyzer
-
-def run_antlr4_parse(file_path, option):
-    """
-    Executa antlr4-parse de forma cross-platform (Windows, Linux, macOS).
-    """
-    # Verifica se antlr4-parse está disponível
-    if shutil.which("antlr4-parse") is None:
-        print("Erro: antlr4-parse não encontrado no PATH.")
-        print("Certifique-se de que o ANTLR4 está instalado e configurado no PATH.")
-        return
-
-    # Lê o conteúdo do ficheiro
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            file_content = f.read()
-    except FileNotFoundError:
-        print(f"Erro: ficheiro '{file_path}' não encontrado.")
-        return
-
-    cmd = ["antlr4-parse", "MOCP.g4", "program", option]
-
-    try:
-        subprocess.run(cmd, input=file_content.encode('utf-8'), check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Erro ao executar antlr4-parse: {e}")
+from utils import run_antlr4_parse
 
 def main():
     if len(sys.argv) < 2:

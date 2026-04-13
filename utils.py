@@ -1,3 +1,5 @@
+import shutil
+import subprocess
 from constants import MAP_MOCP_SYMBOLS
 
 def format_expected(recognizer, e):
@@ -28,13 +30,11 @@ def format_expected(recognizer, e):
     except:
         return "desconhecido"
 
-
 def translate_token(token):
     """
     Traduz tokens internos da gramática para símbolos legíveis ou equivalentes em MOCP.
     """
     return MAP_MOCP_SYMBOLS.get(token, token)
-
 
 def translate_tokens_list(tokens_list):
     """
@@ -48,3 +48,28 @@ def translate_tokens_list(tokens_list):
     translated_tokens = [translate_token(token) for token in tokens]
 
     return ', '.join(translated_tokens)
+
+def run_antlr4_parse(file_path, option):
+    """
+    Executa antlr4-parse de forma cross-platform (Windows, Linux, macOS).
+    """
+    # Verifica se antlr4-parse está disponível
+    if shutil.which("antlr4-parse") is None:
+        print("Erro: antlr4-parse não encontrado no PATH.")
+        print("Certifique-se de que o ANTLR4 está instalado e configurado no PATH.")
+        return
+
+    # Lê o conteúdo do ficheiro
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            file_content = f.read()
+    except FileNotFoundError:
+        print(f"Erro: ficheiro '{file_path}' não encontrado.")
+        return
+
+    cmd = ["antlr4-parse", "MOCP.g4", "program", option]
+
+    try:
+        subprocess.run(cmd, input=file_content.encode('utf-8'), check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Erro ao executar antlr4-parse: {e}")

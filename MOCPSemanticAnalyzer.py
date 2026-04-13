@@ -1,10 +1,9 @@
-from typing import Any, cast
-
 from MOCPErrorMessages import MOCPErrorMessages
 from MOCPParser import MOCPParser
 from MOCPSymbolTable import MOCPSymbolTable
 from MOCPVisitor import MOCPVisitor
 from constants import MAP_C_MOCP
+from typing import Any, cast
 
 class MOCPSemanticAnalyzer(MOCPVisitor):
     """
@@ -107,13 +106,14 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
         # Recolhe os tipos dos parâmetros, se existirem e não forem (void)
         param_types = []
+
         if context.parameters():
             params = context.parameters()
             if not params.VOID():
-                for p in params.parameter():
-                    ptype = p.type_().getText()
-                    is_array = p.LBRACKET() is not None
-                    param_types.append((ptype, is_array))
+                for param in params.parameter():
+                    param_type = param.type_().getText()
+                    is_array = param.LBRACKET() is not None
+                    param_types.append((param_type, is_array))
 
         defined = self.symbol_table.define(
             function_name,
@@ -148,8 +148,9 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
         # Verifica se 'principal' já foi definida anteriormente; caso contrário, regista-a
         symbol = self.symbol_table.resolve(main_name)
+
         if symbol and symbol.get("is_defined", False):
-            self._register_error(context, "Função 'principal' já foi definida anteriormente.")
+            self._register_error(context, MOCPErrorMessages.DECLARED_MAIN)
         else:
             self.symbol_table.define(
                 main_name,
@@ -181,17 +182,18 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Verifica se a função já foi definida anteriormente
         symbol = self.symbol_table.resolve(function_name)
         if symbol and symbol.get("is_defined", False):
-            self._register_error(context, f"Função '{function_name}' já foi definida anteriormente.")
+            self._register_error(context, MOCPErrorMessages.function_already_declared(function_name))
 
         # Recolhe os tipos dos parâmetros, se existirem e não forem (void)
         param_types = []
+
         if context.parameters():
             params = context.parameters()
             if not params.VOID():
-                for p in params.parameter():
-                    ptype = p.type_().getText()
-                    is_array = p.LBRACKET() is not None
-                    param_types.append((ptype, is_array))
+                for param in params.parameter():
+                    param_type = param.type_().getText()
+                    is_array = param.LBRACKET() is not None
+                    param_types.append((param_type, is_array))
 
         # Atualiza a definição da função na tabela de símbolos
         self.symbol_table.define(
@@ -244,19 +246,21 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         variable_name = context.IDENTIFIER().getText()
         is_array = context.LBRACKET() is not None
-        decl_type = self.current_declaration_type
+        declaration_type = self.current_declaration_type
 
         # Se for uma leitura (reads), trata-se como array de inteiros
         if context.READS():
             is_array = True
+
             if self.current_declaration_type != MAP_C_MOCP.get("int"):
-                self._register_error(context, "Variável inicializada com 'lers()' tem de ser do tipo 'inteiro[]'.")
-            decl_type = MAP_C_MOCP.get("int")
+                self._register_error(context, MOCPErrorMessages.READS_INVALID_TYPE)
+
+            declaration_type = MAP_C_MOCP.get("int")
 
         # Regista a variável na tabela de símbolos
         defined = self.symbol_table.define(
             variable_name,
-            {"type": decl_type, "is_array": is_array, "is_function": False},
+            {"type": declaration_type, "is_array": is_array, "is_function": False},
         )
 
         if not defined:
@@ -266,7 +270,8 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Verifica a compatibilidade de tipos na inicialização escalar
         if context.expression() and not context.LBRACKET():
             expression_type = self._eval(context.expression())
-            if expression_type != self.ERROR and not self._types_compatible_strict(decl_type, expression_type):
+
+            if expression_type != self.ERROR and not self._types_compatible_strict(declaration_type, expression_type):
                 self._register_error(context, MOCPErrorMessages.variable_wrong_type(variable_name))
         
         # Verifica o tamanho e os elementos na inicialização de arrays
@@ -274,14 +279,16 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
             if context.NUMBER():
                 declared_size = int(context.NUMBER().getText())
                 array_block = context.arrayBlock()
+
                 if array_block.valueList():
                     num_elements = len(array_block.valueList().expression())
+
                     if num_elements > declared_size:
                         self._register_error(
                             context,
-                            f"Vetor '{variable_name}' declarado com tamanho {declared_size}"
-                            f" mas inicializado com {num_elements} elementos.",
+                            MOCPErrorMessages.vector_wrong_size(variable_name, declared_size, num_elements),
                         )
+
             self.visit(context.arrayBlock())
 
         return None
@@ -293,13 +300,13 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Valida o tipo de cada elemento da lista de valores
         if context.valueList():
             base_type = self.current_declaration_type
+
             for expression in context.valueList().expression():
                 expression_type = self._eval(expression)
                 if expression_type != self.ERROR and not self._types_compatible(base_type, expression_type):
                     self._register_error(
                         context,
-                        f"Elemento do vetor de tipo incompatível"
-                        f" (esperado '{base_type}', recebido '{expression_type}').",
+                        MOCPErrorMessages.vector_wrong_element_type(base_type, expression_type),
                     )
         return None
 
@@ -368,7 +375,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
             # Acesso a elemento de array: IDENTIFIER[expression]
             if context.LBRACKET():
                 if not symbol.get("is_array"):
-                    self._register_error(context, MOCPErrorMessages.variable_is_not_vector(variable_name))
+                    self._register_error(context, MOCPErrorMessages.variable_not_a_vector(variable_name))
                     return self.ERROR
 
                 index_type = self._eval(context.expression())
@@ -438,7 +445,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Atribuição a elemento de array: valida índice e tipo
         if context.LBRACKET():
             if not symbol.get("is_array"):
-                self._register_error(context, MOCPErrorMessages.variable_is_not_vector(variable_name))
+                self._register_error(context, MOCPErrorMessages.variable_not_a_vector(variable_name))
                 return None
 
             index_type = self._eval(expressions[0]) or self.ERROR
@@ -448,7 +455,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Atribuição escalar: rejeita uso de array sem índice
         else:
             if symbol.get("is_array"):
-                self._register_error(context, MOCPErrorMessages.required_index(variable_name))
+                self._register_error(context, MOCPErrorMessages.vector_required_index(variable_name))
                 return None
 
         # Verifica compatibilidade de tipos entre a variável e a expressão atribuída
@@ -472,17 +479,17 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         if context.READS(): return self.STRING_ARRAY
 
         if context.IDENTIFIER():
-            func_name = context.IDENTIFIER().getText()
-            symbol = self.symbol_table.resolve(func_name)
+            function_name = context.IDENTIFIER().getText()
+            symbol = self.symbol_table.resolve(function_name)
 
             # Verifica se a função foi declarada
             if not symbol:
-                self._register_error(context, MOCPErrorMessages.function_not_declared(func_name))
+                self._register_error(context, MOCPErrorMessages.function_not_declared(function_name))
                 return self.ERROR
 
             # Verifica se o identificador é de facto uma função
             if not symbol.get("is_function"):
-                self._register_error(context, MOCPErrorMessages.variable_not_a_function(func_name))
+                self._register_error(context, MOCPErrorMessages.variable_not_a_function(function_name))
                 return self.ERROR
 
             # Recolhe os argumentos passados na chamada
@@ -495,8 +502,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
             if len(arg_expressions) != len(expected_params):
                 self._register_error(
                     context,
-                    f"Função '{func_name}' espera {len(expected_params)} argumento(s),"
-                    f" mas recebeu {len(arg_expressions)}.",
+                    MOCPErrorMessages.function_wrong_num_arguments(function_name, len(expected_params), len(arg_expressions))
                 )
                 for arg in arg_expressions:
                     self._eval(arg)
@@ -517,21 +523,19 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
                         if variable_symbol and not variable_symbol.get("is_array", False):
                             self._register_error(
                                 context,
-                                f"Argumento {i + 1} da função '{func_name}' deve ser um vetor.",
+                                MOCPErrorMessages.function_arg_not_vector(i + 1, function_name)
                             )
                     elif arg_type != self.STRING_ARRAY:
                         self._register_error(
                             context,
-                            f"Argumento {i + 1} da função '{func_name}' deve ser um vetor,"
-                            f" mas recebeu tipo '{arg_type}'.",
+                            MOCPErrorMessages.function_arg_wrong_type(i + 1, function_name, arg_type, 'vector')
                         )
                 else:
                     # O argumento deve ser compatível com o tipo escalar esperado
                     if not self._types_compatible(expected_type, arg_type):
                         self._register_error(
                             context,
-                            f"Argumento {i + 1} da função '{func_name}' é do tipo '{arg_type}',"
-                            f" mas esperava '{expected_type}'.",
+                            MOCPErrorMessages.function_arg_wrong_type(i + 1, function_name, arg_type, expected_type)
                         )
 
             return symbol["type"]
@@ -653,14 +657,14 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         Regra: ! | - | (cast)
         """
-        # Negação lógica: operando tem de ser numérico; resultado é inteiro
+        # Negação lógica: operando tem de ser numérico e o resultado é inteiro
         if context.NOT():
             expression_type = self._eval(context.expressionUnary())
             if not self._is_numeric(expression_type) and expression_type != self.ERROR:
                 self._register_error(context, MOCPErrorMessages.invalid_operation_for_type(expression_type))
             return MAP_C_MOCP.get("int")
 
-        # Negação aritmética: operando tem de ser numérico; preserva o tipo
+        # Negação aritmética: operando tem de ser numérico e preserva o tipo
         if context.MINUS():
             expression_type = self._eval(context.expressionUnary())
             if not self._is_numeric(expression_type) and expression_type != self.ERROR:
@@ -678,13 +682,13 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
             # Cast só é permitido para tipos numéricos
             if target_type not in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double")]:
-                self._register_error(context, "Cast só pode ser para 'inteiro' ou 'real'.")
+                self._register_error(context, MOCPErrorMessages.CAST_ALLOWED)
                 return self.ERROR
 
             # A expressão de origem também tem de ser numérica
             source_type = self._eval(context.castExpr())
             if not self._is_numeric(source_type) and source_type != self.ERROR:
-                self._register_error(context, "Cast só pode ser aplicado a expressões numéricas.")
+                self._register_error(context, MOCPErrorMessages.CAST_EXPRESSIONS)
                 return self.ERROR
 
             return target_type
@@ -702,6 +706,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         if context.IF():
             # A condição do IF tem de ser numérica
             condition_type = self._eval(context.expression())
+
             if not self._is_numeric(condition_type) and condition_type != self.ERROR:
                 self._register_error(context, MOCPErrorMessages.IF_CONDITION_NOT_NUMERICAL)
 
@@ -719,6 +724,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         # A condição do WHILE tem de ser numérica
         condition_type = self._eval(context.expression())
+
         if not self._is_numeric(condition_type) and condition_type != self.ERROR:
             self._register_error(context, MOCPErrorMessages.WHILE_CONDITION_NOT_NUMERICAL)
 
@@ -772,7 +778,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Se for uma atribuição a um elemento de array
         if context.LBRACKET():
             if not symbol.get("is_array"):
-                self._register_error(context, MOCPErrorMessages.variable_is_not_vector(variable_name))
+                self._register_error(context, MOCPErrorMessages.variable_not_a_vector(variable_name))
             else:
                 # O primeiro 'expression' é o índice
                 index_expr = context.expression(0)
@@ -786,7 +792,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         assigned_expr = expr_list[-1] if expr_list else None
 
         if not assigned_expr:
-            self._register_error(context, "Expressão de atribuição inválida no ciclo 'para'.")
+            self._register_error(context, MOCPErrorMessages.FOR_INVALID_ASSIGNMENT)
             return None
 
         expression_type = self._eval(assigned_expr)
@@ -809,7 +815,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
             # WRITE aceita qualquer tipo, mas não strings (arrays de caracteres)
             if context.WRITE() and expression_type == self.STRING_ARRAY:
-                self._register_error(context, "Função 'escrever()' não aceita strings. Use 'escrevers()'.")
+                self._register_error(context, MOCPErrorMessages.WRITE_INVALID_TYPE)
 
             # WRITEC exige um inteiro (escreve um único carácter)
             if context.WRITEC() and not self._is_int(expression_type) and expression_type != self.ERROR:
@@ -820,7 +826,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
             variable_name = context.IDENTIFIER().getText()
             symbol = self.symbol_table.resolve(variable_name)
             if not symbol:
-                self._register_error(context, MOCPErrorMessages.array_not_declared(variable_name))
+                self._register_error(context, MOCPErrorMessages.vector_not_declared(variable_name))
             elif not symbol.get("is_array"):
                 self._register_error(context, MOCPErrorMessages.write_c_not_vector(variable_name))
 
@@ -839,7 +845,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
             variable_name = context.IDENTIFIER().getText()
             symbol = self.symbol_table.resolve(variable_name)
             if not symbol:
-                self._register_error(context, MOCPErrorMessages.array_not_declared(variable_name))
+                self._register_error(context, MOCPErrorMessages.vector_not_declared(variable_name))
             elif not symbol.get("is_array"):
                 self._register_error(context, MOCPErrorMessages.WRITES_INVALID_TYPE)
 
@@ -882,16 +888,22 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         if actual == self.ERROR:
             return True
+
         if expected == actual:
             return True
+
         if expected == MAP_C_MOCP.get("int") and actual == MAP_C_MOCP.get("double"):
             return True
+
         if expected == MAP_C_MOCP.get("double") and actual == MAP_C_MOCP.get("int"):
             return True
+
         if actual == self.NUMERIC:
             return expected in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double")]
+
         if actual == self.STRING_ARRAY and expected == MAP_C_MOCP.get("int"):
             return True
+
         return False
     
     def _types_compatible_strict(self, expected, actual):
@@ -902,14 +914,19 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         if actual == self.ERROR:
             return True
+
         if expected == actual:
             return True
+
         if expected == MAP_C_MOCP.get("double") and actual == MAP_C_MOCP.get("int"):
             return True  # promoção implícita inteiro -> real
+
         if actual == self.NUMERIC:
             return expected in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double")]
+
         if actual == self.STRING_ARRAY and expected == MAP_C_MOCP.get("int"):
             return True
+
         return False
     
     def _is_numeric(self, t):
@@ -924,7 +941,8 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         return t in [MAP_C_MOCP.get("int"), self.NUMERIC]
 
-    def _is_real(self, t):
+    @staticmethod
+    def _is_real(t):
         """
         Retorna True se o tipo for real (double).
         """
