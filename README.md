@@ -86,6 +86,12 @@ brew install python3
 
 **Como utilizar:**
 
+Análise do programa (recomendado)
+Para verificar se o programa cumpre a linguagem MOCP, com mensagens de erro traduzidas:
+```bash
+python3 main.py Testes/teste1.txt
+```
+
 Para gerar a árvore textual
 ```bash
 python3 main.py Testes/teste1.txt -tree
@@ -94,7 +100,7 @@ Para abrir a GUI da árvore
 ```bash
 python3 main.py Testes/teste1.txt -gui
 ```
-⚠️ Certifique-se de que o ANTLR4 está instalado e o antlr4-parse está no PATH.
+⚠️ As opções `-tree` e `-gui` requerem que o ANTLR4 esteja instalado e que o `antlr4-parse` esteja configurado no PATH do sistema.
 
 ---
 
