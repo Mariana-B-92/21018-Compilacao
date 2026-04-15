@@ -1,5 +1,5 @@
 /* Ordem – Protótipos antes de Funções ou Variáveis */
-/* Regra: Todos os protótipos devem vir antes de qualquer função ou variável. - inváldio */
+/* Regra: Todos os protótipos devem vir antes de qualquer função ou variável. - inválido */
 vazio principal(vazio);
 
 inteiro soma(inteiro a, inteiro b) {
