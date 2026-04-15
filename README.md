@@ -86,8 +86,7 @@ brew install python3
 
 **Como utilizar:**
 
-Análise do programa (recomendado)
-Para verificar se o programa cumpre a linguagem MOCP, com mensagens de erro traduzidas:
+Verifica se o programa cumpre a linguagem MOCP, com mensagens de erro traduzidas
 ```bash
 python3 main.py Testes/teste1.txt
 ```
