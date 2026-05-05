@@ -63,7 +63,7 @@ RBRACE      : '}' ;
 LPAREN      : '(' ;
 RPAREN      : ')' ;
 
-// Operadores de C não suportados em MOCP
+// Operadores de C não suportados em MOCP — intercetados como erros léxicos pelo MOCPLexerWrapper
 INC     : '++' ;
 DEC     : '--' ;
 ADD_ASS : '+=' ;
@@ -73,10 +73,21 @@ DIV_ASS : '/=' ;
 MOD_ASS : '%=' ;
 LSHIFT  : '<<' ;
 RSHIFT  : '>>' ;
-BITAND  : '&' ;
-BITOR   : '|' ;
-BITXOR  : '^' ;
-BITNOT  : '~' ;
+BITAND  : '&'  ;
+BITOR   : '|'  ;
+BITXOR  : '^'  ;
+BITNOT  : '~'  ;
+
+// Palavras-chave de C proibidas em MOCP — devem vir ANTES de IDENTIFIER para terem prioridade léxica:
+FORBIDDEN_KEYWORD
+    : ( 'auto' | 'break' | 'case' | 'char' | 'const' | 'continue' | 'default'
+      | 'double' | 'else' | 'enum' | 'extern' | 'float' | 'for' | 'goto'
+      | 'if' | 'int' | 'long' | 'main' | 'printf' | 'read' | 'register'
+      | 'return' | 'short' | 'signed' | 'sizeof' | 'static' | 'struct'
+      | 'switch' | 'typedef' | 'union' | 'unsigned' | 'void' | 'volatile'
+      | 'while' | 'write'
+      )
+    ;
 
 // Literais e identificadores:
 STRING_LITERAL  : '"' ( '\\' . | ~["\\\r\n] )* '"'  ;   // String literal com escapes.
@@ -122,7 +133,7 @@ unit
 
 /* Assinatura de função sem corpo. */
 prototype
-    : returnType IDENTIFIER LPAREN parameters? RPAREN SEMI_COLON
+    : returnType IDENTIFIER LPAREN prototypeParameters? RPAREN SEMI_COLON
     ;
 
 /* Declaração obrigatória da função principal. */
@@ -137,19 +148,31 @@ mainFunction
 
 /* Definição de função com corpo. */
 functionDef
-    : returnType IDENTIFIER LPAREN parameters? RPAREN block
+    : returnType IDENTIFIER LPAREN defParameters? RPAREN block
     ;
 
-/* Parâmetros formais: podem ser omitidos, explicitamente 'vazio', ou uma lista tipada de parâmetros. */
-parameters
+/* Parâmetros de protótipo: identificador é opcional (ex: inteiro, real[]). */
+prototypeParameters
     : VOID
-    | parameter (COMMA parameter)*
+    | parameterPrototype (COMMA parameterPrototype)*
     ;
 
-/* Parâmetro simples ou vetor. */
-parameter
+/* Parâmetros de definição: identificador é obrigatório. */
+defParameters
+    : VOID
+    | parameterDef (COMMA parameterDef)*
+    ;
+
+/* Parâmetro de protótipo — identificador pode ser omitido. */
+parameterPrototype
     : type IDENTIFIER?
     | type IDENTIFIER? LBRACKET RBRACKET
+    ;
+
+/* Parâmetro de definição — identificador é obrigatório. */
+parameterDef
+    : type IDENTIFIER
+    | type IDENTIFIER LBRACKET RBRACKET
     ;
 
 /* Tipos suportados pela linguagem. */
