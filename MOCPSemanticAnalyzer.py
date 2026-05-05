@@ -98,7 +98,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
     def visitPrototype(self, context: MOCPParser.PrototypeContext):
         """
-        Regra: returnType IDENTIFIER LPAREN parameters? RPAREN SEMI_COLON
+        Regra: returnType IDENTIFIER LPAREN prototypeParameters? RPAREN SEMI_COLON
         """
         function_name = context.IDENTIFIER().getText()
         function_type = context.returnType().getText()
@@ -107,10 +107,10 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Recolhe os tipos dos parâmetros, se existirem e não forem (void)
         param_types = []
 
-        if context.parameters():
-            params = context.parameters()
+        if context.prototypeParameters():
+            params = context.prototypeParameters()
             if not params.VOID():
-                for param in params.parameter():
+                for param in params.parameterPrototype():
                     param_type = param.type_().getText()
                     is_array = param.LBRACKET() is not None
                     param_types.append((param_type, is_array))
@@ -187,10 +187,10 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Recolhe os tipos dos parâmetros, se existirem e não forem (void)
         param_types = []
 
-        if context.parameters():
-            params = context.parameters()
+        if context.defParameters():
+            params = context.defParameters()
             if not params.VOID():
-                for param in params.parameter():
+                for param in params.parameterDef():
                     param_type = param.type_().getText()
                     is_array = param.LBRACKET() is not None
                     param_types.append((param_type, is_array))
@@ -208,8 +208,8 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
         # Visita os parâmetros e o bloco da função num novo âmbito
         self.symbol_table.enter_scope()
-        if context.parameters():
-            self.visit(context.parameters())
+        if context.defParameters():
+            self.visit(context.defParameters())
         self.visit(context.block())
         self.symbol_table.exit_scope()
 
@@ -322,9 +322,10 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
     # 5. PARÂMETROS DE FUNÇÕES
     # ==========================================
 
-    def visitParameter(self, context: MOCPParser.ParameterContext):
+    def visitParameterDef(self, context: MOCPParser.ParameterDefContext):
         """
         Regra: type IDENTIFIER | type IDENTIFIER LBRACKET RBRACKET
+        O IDENTIFIER é obrigatório em definições de função.
         """
         parameter_type = context.type_().getText()
         parameter_name = context.IDENTIFIER().getText()
