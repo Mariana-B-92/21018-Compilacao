@@ -1,0 +1,10 @@
+/* Exemplo de ciclo enquanto */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro x = 5, y = 10;
+
+    enquanto (x > 0) {  
+        x = x - 10;  
+    }
+}

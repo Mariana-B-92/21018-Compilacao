@@ -1,0 +1,9 @@
+/* Ciclo Para */
+/* Regra 1: O ciclo para não pode usar operadores não permitidos (como ++). Use 'i = i + 1'. - inválido */
+/* Regra 2: Todos os blocos devem estar entre chavetas. - inválido */
+vazio principal(vazio);
+vazio principal(vazio) {
+    inteiro i;
+    para (i = 0; i < 10; i++)
+        escrever(i);
+}

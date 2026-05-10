@@ -1,0 +1,6 @@
+/* Declaração de Variáveis: Tipos */
+/* Regra: Apenas os tipos "int" e "double" são permitidos.-inválido*/
+inteiro identidade(inteiro);
+vazio principal(vazio);
+
+float x;

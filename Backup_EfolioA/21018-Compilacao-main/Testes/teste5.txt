@@ -1,0 +1,10 @@
+/* Exemplo de ciclo para */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro i, x = 5, y = 10;
+
+    para (i = 0; i < 10; i = i + 1) {
+        x = x + i;
+    }
+}

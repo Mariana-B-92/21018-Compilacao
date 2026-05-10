@@ -1,0 +1,12 @@
+/* Exemplo de condição */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro x = 5, y = 10;
+
+    se (x > y) {
+        y = x;
+    } senao {
+        x = y;
+    }
+}

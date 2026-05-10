@@ -1,0 +1,7 @@
+/* Blocos de Instrução: Obrigatoriedade de Chavetas */
+/* Regra: Todos os blocos de instrução (mesmo com uma única instrução) devem estar entre chavetas. -inválido */
+vazio principal(vazio);
+vazio principal(vazio) {
+    se (1)
+        escrever(1);
+}
