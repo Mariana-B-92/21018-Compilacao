@@ -1,15 +1,7 @@
 import re
 from antlr4.error.ErrorListener import ErrorListener
-from constants import FORBIDDEN_C_OPERATORS, MAP_C_MOCP
+from constants import FORBIDDEN_C_OPERATORS, FORBIDDEN_OPERATOR_TOKENS, MAP_C_MOCP
 from utils import format_expected, translate_token, translate_tokens_list
-
-# Tokens de operadores proibidos gerados pelo léxico
-FORBIDDEN_OPERATOR_TOKENS = {
-    'INC': '++', 'DEC': '--', 'ADD_ASS': '+=', 'SUB_ASS': '-=',
-    'MUL_ASS': '*=', 'DIV_ASS': '/=', 'MOD_ASS': '%=',
-    'LSHIFT': '<<', 'RSHIFT': '>>', 'BITAND': '&',
-    'BITOR': '|', 'BITXOR': '^', 'BITNOT': '~',
-}
 
 class MOCPErrorListener(ErrorListener):
     """

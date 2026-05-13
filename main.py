@@ -3,7 +3,10 @@ from antlr4 import *
 from MOCPLexer import MOCPLexer
 from MOCPParser import MOCPParser
 from MOCPErrorListener import MOCPErrorListener
-from MOCPSemanticAnalyzer import MOCPSemanticAnalyzer
+from MOCPSemanticAnalyser import MOCPSemanticAnalyser
+from MOCPIntermediateCodeGenerator import MOCPIntermediateCodeGenerator
+from MOCPCodeOptimiser import MOCPCodeOptimiser
+from MOCPSymbolTable import MOCPSymbolTable
 from utils import run_antlr4_parse
 
 def main():
@@ -56,7 +59,9 @@ def main():
         return
 
     # Análise semântica
-    semantic_analyzer = MOCPSemanticAnalyzer()
+    symbol_table = MOCPSymbolTable()
+
+    semantic_analyzer = MOCPSemanticAnalyser(symbol_table)
     semantic_analyzer.visit(tree)
 
     if semantic_analyzer.errors:
@@ -64,7 +69,29 @@ def main():
         for error in semantic_analyzer.errors:
             print(error)
     else:
-       print("Programa semanticamente correto.")
+        print("Programa semanticamente correto.")
+
+        # Geração de Código Intermédio (TAC)
+        print("--- A Gerar Código Intermédio (TAC) ---")
+
+        generator = MOCPIntermediateCodeGenerator(symbol_table)
+        generator.visit(tree)
+
+        print("\n[Código Intermédio Original]:")
+
+        for instruction in generator.code:
+            print(instruction)
+
+        # Otimização do Código
+        print("\n--- A Otimizar Código ---")
+
+        optimiser = MOCPCodeOptimiser(generator.code)
+        optimised_code = optimiser.optimize()
+
+        print("\n[Código Intermédio Otimizado]:")
+
+        for instruction in optimised_code:
+            print(instruction)
 
 
 if __name__ == '__main__':

@@ -1,11 +1,10 @@
 from MOCPErrorMessages import MOCPErrorMessages
 from MOCPParser import MOCPParser
-from MOCPSymbolTable import MOCPSymbolTable
 from MOCPVisitor import MOCPVisitor
 from constants import MAP_C_MOCP
 from typing import Any, cast
 
-class MOCPSemanticAnalyzer(MOCPVisitor):
+class MOCPSemanticAnalyser(MOCPVisitor):
     """
     Percorre a Árvore de Sintaxe Abstrata para validar as regras semânticas.
     """
@@ -13,12 +12,12 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
     NUMERIC = "numeric"
     STRING_ARRAY = "string_array"
 
-    def __init__(self):
+    def __init__(self, symbol_table):
         self.current_declaration_type = None
         self.current_function_type = None
         self.declared_prototypes = set()
         self.errors = []
-        self.symbol_table = MOCPSymbolTable()
+        self.symbol_table = symbol_table
 
     # ==========================================
     # 0. MÉTODOS AUXILIARES GERAIS
@@ -566,6 +565,17 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         # Operações lógicas resultam sempre num inteiro (0 ou 1)
         return MAP_C_MOCP.get("int")
 
+    def visitExpressionOrAssign(self, context: MOCPParser.ExpressionOrAssignContext):
+        """
+        Regra: IDENTIFIER (LBRACKET expression RBRACKET)? ASSIGN expression | expression
+        """
+        # Distingue entre uma atribuição e uma expressão simples
+        if context.ASSIGN():
+            self._visit_assign_in_for(context)
+        else:
+            self._eval(context.expression())
+        return None
+
     def visitExpressionAnd(self, context: MOCPParser.ExpressionAndContext):
         """
         Regra: expressionAnd AND expressionEquality | expressionEquality
@@ -751,17 +761,6 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
             self._eval(context.expressionOrAssign(1))
 
         self.visit(context.block())
-        return None
-
-    def visitExpressionOrAssign(self, context: MOCPParser.ExpressionOrAssignContext):
-        """
-        Regra: IDENTIFIER (LBRACKET expression RBRACKET)? ASSIGN expression | expression
-        """
-        # Distingue entre uma atribuição e uma expressão simples
-        if context.ASSIGN():
-            self._visit_assign_in_for(context)
-        else:
-            self._eval(context.expression())
         return None
 
     def _visit_assign_in_for(self, context: MOCPParser.ExpressionOrAssignContext):
