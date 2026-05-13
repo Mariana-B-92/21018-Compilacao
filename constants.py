@@ -86,3 +86,11 @@ MAP_MOCP_SYMBOLS = {
     'LPAREN': '(',
     'RPAREN': ')',
 }
+
+# Tokens de operadores proibidos gerados pelo léxico
+FORBIDDEN_OPERATOR_TOKENS = {
+    'INC': '++', 'DEC': '--', 'ADD_ASS': '+=', 'SUB_ASS': '-=',
+    'MUL_ASS': '*=', 'DIV_ASS': '/=', 'MOD_ASS': '%=',
+    'LSHIFT': '<<', 'RSHIFT': '>>', 'BITAND': '&',
+    'BITOR': '|', 'BITXOR': '^', 'BITNOT': '~',
+}
