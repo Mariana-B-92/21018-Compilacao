@@ -1,15 +1,7 @@
 import re
 from antlr4.error.ErrorListener import ErrorListener
-from constants import FORBIDDEN_C_OPERATORS, MAP_C_MOCP
+from constants import MAP_C_MOCP
 from utils import format_expected, translate_token, translate_tokens_list
-
-# Tokens de operadores proibidos gerados pelo léxico
-FORBIDDEN_OPERATOR_TOKENS = {
-    'INC': '++', 'DEC': '--', 'ADD_ASS': '+=', 'SUB_ASS': '-=',
-    'MUL_ASS': '*=', 'DIV_ASS': '/=', 'MOD_ASS': '%=',
-    'LSHIFT': '<<', 'RSHIFT': '>>', 'BITAND': '&',
-    'BITOR': '|', 'BITXOR': '^', 'BITNOT': '~',
-}
 
 class MOCPErrorListener(ErrorListener):
     """
@@ -68,15 +60,15 @@ class MOCPErrorListener(ErrorListener):
             self._register(message)
             return
 
-        # ── Operadores proibidos (INC, DEC, ADD_ASS, …) ────────────────────────
+        # ── Operadores proibidos ───────────────────────────────────────────────
         # São tokens do léxico que chegam ao parser como símbolos não esperados.
         # Tratamo-los como erros léxicos para que o diagnóstico seja imediato e claro.
-        if token_type_name in FORBIDDEN_OPERATOR_TOKENS:
-            op_symbol = FORBIDDEN_OPERATOR_TOKENS[token_type_name]
+        if token_type_name == "FORBIDDEN_OPERATOR":
             message = (
-                f"[Erro Léxico] Operador '{op_symbol}' não é suportado na MOCP "
+                f"[Erro Léxico] Operador '{symbol_text}' não é suportado na MOCP "
                 f"(linha {line}, coluna {column})."
             )
+
             self._lex_error_lines.add(line)
             self._register(message)
             return
