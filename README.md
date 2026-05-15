@@ -1,11 +1,11 @@
 # MOCP - My Own C in Português
 
-**UAb 2024/2025 – Unidade Curricular de Compilação**  
+**UAb 2025/2026 – Unidade Curricular de Compilação**  
 
 <img width="420" height="420" alt="logo" src="https://github.com/user-attachments/assets/dc6dc0f6-ef6b-4fa8-8a2e-ee60c5c5f3d6" />
 
 
-Este projeto tem como objetivo o desenvolvimento de um compilador para a linguagem **MOCP (My Own C in Project)**, uma linguagem fictícia inspirada em C. A gramática foi simplificada e adaptada para fins didáticos, permitindo explorar conceitos de análise léxica e sintática.
+Este projeto implementa um compilador completo para a linguagem  **MOCP (My Own C in Project)**, uma linguagem fictícia inspirada em C com palavras-chave em português. O compilador cobre todas as fases: análise léxica e sintática, análise semântica, geração de código intermédio (TAC) e otimização desse código.
 
 ---
 
@@ -15,7 +15,9 @@ A linguagem **MOCP** foi concebida para facilitar o estudo e a experimentação 
 
 Este repositório inclui:  
 - A gramática completa da linguagem em ANTLR4 (`MOCP.g4`)  
-- Scripts para compilação, análise e validação de programas escritos em MOCP  
+- Scripts para compilação, análise e validação de programas escritos em MOCP 
+- Gerador de código intermédio TAC com quádruplas estruturadas  
+- Otimizador com 6 técnicas: constant folding, propagação de cópias, CSE, LICM, código inatingível e código morto 
 
 ---
 
@@ -31,16 +33,19 @@ Este repositório inclui:
 
 ```text
 MOCP/
-├── MOCP.g4              # Gramática ANTLR4 da linguagem MOCP (léxico + sintaxe)
-├── MOCPErrorListener.py # Intercepta e traduz erros do ANTLR4 em mensagens amigáveis para MOCP.
-├── MOCPErrorMessages    # Mensagens de erro semântico padronizadas (funções auxiliares)
-├── MOCPSemanticAnalyzer # Analisador semântico: valida tipos, declarações, escopos, protótipos e chamadas
-├── MOCPSymbolTable      # Tabela de símbolos com suporte a escopos aninhados
-├── constants.py         # Mapeamento entre palavras‑chave MOCP e C
-├── main.py              # Script principal para execução e análise
-├── utils.py             # Funções utilitárias
-├── Testes/              # Diretório com exemplos de programas MOCP para teste (válidos e inválidos)
-└── README.md            # Documentação geral do projeto, instruções de uso e exemplos
+├── MOCP.g4                           # Gramática ANTLR4 da linguagem MOCP (léxico + sintaxe)
+├── MOCPErrorListener.py              # Intercepta e traduz erros do ANTLR4 em mensagens amigáveis para MOCP.
+├── MOCPErrorMessages                 # Mensagens de erro semântico padronizadas (funções auxiliares)
+├── MOCPSemanticAnalyzer              # Analisador semântico: valida tipos, declarações, escopos, protótipos e chamadas
+├── MOCPSymbolTable                   # Tabela de símbolos com suporte a escopos aninhados
+├── MOCPIntermediateCodeGenerator.py  # Gerador de código intermédio TAC (quádruplas)
+├── MOCPCodeOptimiser.py              # Otimizador de TAC (6 técnicas)
+├── constants.py                      # Mapeamento entre palavras‑chave MOCP e C
+├── main.py                           # Script principal para execução e análise
+├── utils.py                          # Funções utilitárias
+├── Testes_compilador.py              # Testes automáticos (32 testes unittest)
+├── Testes/                           # Programas MOCP de teste: 6 válidos, 6 de otimização e 14 de rejeição
+└── README.md                         # Documentação geral do projeto, instruções de uso e exemplos
 ```
 
 ---
@@ -86,7 +91,7 @@ brew install python3
 
 **Como utilizar:**
 
-Verifica se o programa cumpre a linguagem MOCP, com mensagens de erro traduzidas
+Compila um programa MOCP e apresenta o TAC gerado e otimizado
 ```bash
 python3 main.py Testes/teste1.txt
 ```
@@ -119,8 +124,19 @@ antlr4 -Dlanguage=Python3 -visitor MOCP.g4
 
 ---
 
+## 5️⃣ Executar os testes automáticos
+```bash
+python3 Testes_compilador.py
+```
+
+---
+
 ## Autores
 - Undefined Behaviour Team 1
   -  Mariana Barrote - 2200640
   -  Rui Correia - 2102862
-- UC de Compilação - Universidade Aberta, 2025/2026
+- Undefined Behaviour Team 2
+  -  Joana Regalado - 2300250
+  -  Rafael Sousa - 2301433
+
+UC de Compilação - Universidade Aberta, 2025/2026
