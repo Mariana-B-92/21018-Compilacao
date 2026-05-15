@@ -63,26 +63,28 @@ RBRACE      : '}' ;
 LPAREN      : '(' ;
 RPAREN      : ')' ;
 
-// Operadores de C não suportados em MOCP — intercetados como erros léxicos pelo MOCPLexerWrapper
-INC     : '++' ;
-DEC     : '--' ;
-ADD_ASS : '+=' ;
-SUB_ASS : '-=' ;
-MUL_ASS : '*=' ;
-DIV_ASS : '/=' ;
-MOD_ASS : '%=' ;
-LSHIFT  : '<<' ;
-RSHIFT  : '>>' ;
-BITAND  : '&'  ;
-BITOR   : '|'  ;
-BITXOR  : '^'  ;
-BITNOT  : '~'  ;
+// Operadores de C não suportados em MOCP.
+FORBIDDEN_OPERATOR
+    : '++'
+    | '--'
+    | '+='
+    | '-='
+    | '*='
+    | '/='
+    | '%='
+    | '<<'
+    | '>>'
+    | '&'
+    | '|'
+    | '^'
+    | '~'
+    ;
 
 // Palavras-chave de C proibidas em MOCP — devem vir ANTES de IDENTIFIER para terem prioridade léxica:
 FORBIDDEN_KEYWORD
     : ( 'auto' | 'break' | 'case' | 'char' | 'const' | 'continue' | 'default'
       | 'double' | 'else' | 'enum' | 'extern' | 'float' | 'for' | 'goto'
-      | 'if' | 'int' | 'long' | 'main' | 'printf' | 'read' | 'register'
+      | 'if'  | 'int' | 'long' | 'main' | 'printf' | 'read' | 'register'
       | 'return' | 'short' | 'signed' | 'sizeof' | 'static' | 'struct'
       | 'switch' | 'typedef' | 'union' | 'unsigned' | 'void' | 'volatile'
       | 'while' | 'write'
@@ -367,7 +369,7 @@ expressionOrAssign
 writeStatement
     : WRITE LPAREN expression RPAREN SEMI_COLON
     | WRITEC LPAREN expression RPAREN SEMI_COLON
-    | WRITEV LPAREN IDENTIFIER RPAREN SEMI_COLON
+    | WRITEV LPAREN expression RPAREN SEMI_COLON
     | WRITES LPAREN stringArgument RPAREN SEMI_COLON
     ;
 
