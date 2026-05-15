@@ -1,10 +1,11 @@
 from MOCPErrorMessages import MOCPErrorMessages
 from MOCPParser import MOCPParser
+from MOCPSymbolTable import MOCPSymbolTable
 from MOCPVisitor import MOCPVisitor
 from constants import MAP_C_MOCP
 from typing import Any, cast
 
-class MOCPSemanticAnalyser(MOCPVisitor):
+class MOCPSemanticAnalyzer(MOCPVisitor):
     """
     Percorre a Árvore de Sintaxe Abstrata para validar as regras semânticas.
     """
@@ -12,12 +13,12 @@ class MOCPSemanticAnalyser(MOCPVisitor):
     NUMERIC = "numeric"
     STRING_ARRAY = "string_array"
 
-    def __init__(self, symbol_table):
+    def __init__(self):
         self.current_declaration_type = None
         self.current_function_type = None
         self.declared_prototypes = set()
         self.errors = []
-        self.symbol_table = symbol_table
+        self.symbol_table = MOCPSymbolTable()
 
     # ==========================================
     # 0. MÉTODOS AUXILIARES GERAIS
@@ -40,19 +41,35 @@ class MOCPSemanticAnalyser(MOCPVisitor):
     
     def _extract_identifier(self, expr_node):
         """
-        Se a expressão for um identificador simples (sem operadores, índices, etc.),
-        retorna o nome do identificador. Caso contrário, retorna None.
+        Extrai o nome de um identificador simples de uma expressão.
+
+        Aceita apenas:
+            IDENTIFIER
+
+        Rejeita:
+            v[i]
+            a+b
+            chamadas
+            casts
+            etc.
         """
+
         if expr_node is None:
             return None
 
-        # Se já for um PrimaryContext, verifica diretamente
+        # Primary direto
         if isinstance(expr_node, MOCPParser.PrimaryContext):
-            if expr_node.IDENTIFIER() and not expr_node.LBRACKET():
+
+            # IDENTIFIER simples
+            if (
+                expr_node.IDENTIFIER()
+                and expr_node.LBRACKET() is None
+            ):
                 return expr_node.IDENTIFIER().getText()
+
             return None
 
-        # Só desce se houver exatamente 1 filho (sem operadores intermédios)
+        # Desce apenas em nós transparentes
         if expr_node.getChildCount() == 1:
             return self._extract_identifier(expr_node.getChild(0))
 
@@ -565,17 +582,6 @@ class MOCPSemanticAnalyser(MOCPVisitor):
         # Operações lógicas resultam sempre num inteiro (0 ou 1)
         return MAP_C_MOCP.get("int")
 
-    def visitExpressionOrAssign(self, context: MOCPParser.ExpressionOrAssignContext):
-        """
-        Regra: IDENTIFIER (LBRACKET expression RBRACKET)? ASSIGN expression | expression
-        """
-        # Distingue entre uma atribuição e uma expressão simples
-        if context.ASSIGN():
-            self._visit_assign_in_for(context)
-        else:
-            self._eval(context.expression())
-        return None
-
     def visitExpressionAnd(self, context: MOCPParser.ExpressionAndContext):
         """
         Regra: expressionAnd AND expressionEquality | expressionEquality
@@ -763,6 +769,17 @@ class MOCPSemanticAnalyser(MOCPVisitor):
         self.visit(context.block())
         return None
 
+    def visitExpressionOrAssign(self, context: MOCPParser.ExpressionOrAssignContext):
+        """
+        Regra: IDENTIFIER (LBRACKET expression RBRACKET)? ASSIGN expression | expression
+        """
+        # Distingue entre uma atribuição e uma expressão simples
+        if context.ASSIGN():
+            self._visit_assign_in_for(context)
+        else:
+            self._eval(context.expression())
+        return None
+
     def _visit_assign_in_for(self, context: MOCPParser.ExpressionOrAssignContext):
         variable_name = context.IDENTIFIER().getText()
         symbol = self.symbol_table.resolve(variable_name)
@@ -807,31 +824,69 @@ class MOCPSemanticAnalyser(MOCPVisitor):
 
     def visitWriteStatement(self, context: MOCPParser.WriteStatementContext):
         """
-        Regra: WRITE LPAREN expression RPAREN SEMI_COLON | WRITEC LPAREN expression RPAREN SEMI_COLON | WRITEV LPAREN IDENTIFIER RPAREN SEMI_COLON
-               | WRITES LPAREN stringArgument RPAREN SEMI_COLON
+        Regra:
+            WRITE LPAREN expression RPAREN SEMI_COLON
+        | WRITEC LPAREN expression RPAREN SEMI_COLON
+        | WRITEV LPAREN expression RPAREN SEMI_COLON
+        | WRITES LPAREN stringArgument RPAREN SEMI_COLON
         """
+
+        # WRITE / WRITEC
         if context.WRITE() or context.WRITEC():
             expression_type = self._eval(context.expression()) or self.ERROR
 
-            # WRITE aceita qualquer tipo, mas não strings (arrays de caracteres)
+            # WRITE não aceita strings/vetores
             if context.WRITE() and expression_type == self.STRING_ARRAY:
-                self._register_error(context, MOCPErrorMessages.WRITE_INVALID_TYPE)
+                self._register_error(
+                    context,
+                    MOCPErrorMessages.WRITE_INVALID_TYPE
+                )
 
-            # WRITEC exige um inteiro (escreve um único carácter)
-            if context.WRITEC() and not self._is_int(expression_type) and expression_type != self.ERROR:
-                self._register_error(context, MOCPErrorMessages.WRITEC_INVALID_TYPE)
+            # WRITEC exige inteiro
+            if context.WRITEC():
+                if not self._is_int(expression_type) and expression_type != self.ERROR:
+                    self._register_error(
+                        context,
+                        MOCPErrorMessages.WRITEC_INVALID_TYPE
+                    )
 
+            return None
+
+        # WRITEV
         elif context.WRITEV():
-            # WRITEV exige um identificador que seja um array
-            variable_name = context.IDENTIFIER().getText()
-            symbol = self.symbol_table.resolve(variable_name)
-            if not symbol:
-                self._register_error(context, MOCPErrorMessages.vector_not_declared(variable_name))
-            elif not symbol.get("is_array"):
-                self._register_error(context, MOCPErrorMessages.write_c_not_vector(variable_name))
+            expr = context.expression()
 
+            # Verifica se é um identificador simples
+            variable_name = self._extract_identifier(expr)
+
+            if variable_name is None:
+                self._register_error(
+                    context,
+                    "WRITEV exige um identificador de vetor simples."
+                )
+                return None
+
+            symbol = self.symbol_table.resolve(variable_name)
+
+            # Verifica existência
+            if not symbol:
+                self._register_error(
+                    context,
+                    MOCPErrorMessages.vector_not_declared(variable_name)
+                )
+                return None
+
+            # Verifica se é vetor
+            if not symbol.get("is_array"):
+                self._register_error(
+                    context,
+                    MOCPErrorMessages.write_c_not_vector(variable_name)
+                )
+
+            return None
+
+        # WRITES
         elif context.WRITES():
-            # WRITES escreve uma cadeia de caracteres
             self._eval(context.stringArgument())
 
         return None
