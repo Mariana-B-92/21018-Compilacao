@@ -1,42 +1,48 @@
 import sys
+
 from antlr4 import *
+
 from MOCPLexer import MOCPLexer
 from MOCPParser import MOCPParser
 from MOCPErrorListener import MOCPErrorListener
-from MOCPSemanticAnalyser import MOCPSemanticAnalyser
+from MOCPSemanticAnalyzer import MOCPSemanticAnalyzer
 from MOCPIntermediateCodeGenerator import MOCPIntermediateCodeGenerator
-from MOCPCodeOptimiser import MOCPCodeOptimiser
-from MOCPSymbolTable import MOCPSymbolTable
+from MOCPCodeOptimiser import optimizar_completo
 from utils import run_antlr4_parse
+
 
 def main():
     if len(sys.argv) < 2:
-        print("Uso: python3 main.py <Testes/ficheiro.txt> [-tree | -gui]")
+        print("Uso: python3 main.py <ficheiro.txt> [-tree | -gui]")
         return
 
     input_file = sys.argv[1]
-    
-    # Suporte a opções -tree e -gui
+
+    # Suporte a opções -tree e -gui (delegam no antlr4-parse)
     if "-tree" in sys.argv:
         run_antlr4_parse(input_file, "-tree")
         return
-
     if "-gui" in sys.argv:
         run_antlr4_parse(input_file, "-gui")
         return
 
-    # Leitura do ficheiro para análise normal
+    # ------------------------------------------------------------------
+    # Leitura do ficheiro de entrada
+    # ------------------------------------------------------------------
     try:
-        input_stream = FileStream(input_file, encoding='utf-8')
+        input_stream = FileStream(input_file, encoding="utf-8")
     except FileNotFoundError:
         print(f"Erro: ficheiro '{input_file}' não encontrado.")
         return
 
-    # Análise Sintática/Léxica:
+    # ------------------------------------------------------------------
+    # Análise Léxica e Sintática
+    # ------------------------------------------------------------------
+    print("--- A iniciar Análise Sintática ---")
+
     lexer = MOCPLexer(input_stream)
     tokens_stream = CommonTokenStream(lexer)
 
-    # Tratamento de Erros:
     error_listener = MOCPErrorListener()
     lexer.removeErrorListeners()
     lexer.addErrorListener(error_listener)
@@ -51,48 +57,60 @@ def main():
         print(f"\n[Parsing interrompido]: {e}")
         return
 
-    # Se houver erros sintáticos/léxicos:
     if error_listener.errors:
         print("\nErros encontrados:")
         for error in error_listener.errors:
             print(error)
         return
 
-    # Análise semântica
-    symbol_table = MOCPSymbolTable()
+    print("--- Análise Sintática concluída ---")
 
-    semantic_analyzer = MOCPSemanticAnalyser(symbol_table)
+    # ------------------------------------------------------------------
+    # Análise Semântica
+    # ------------------------------------------------------------------
+    print("--- A iniciar Análise Semântica ---")
+
+    semantic_analyzer = MOCPSemanticAnalyzer()
     semantic_analyzer.visit(tree)
 
     if semantic_analyzer.errors:
         print("\nErros semânticos:")
         for error in semantic_analyzer.errors:
             print(error)
-    else:
-        print("Programa semanticamente correto.")
+        print("\nErros semânticos encontrados. A abortar o processo de geração de código intermédio.")
+        return
 
-        # Geração de Código Intermédio (TAC)
-        print("--- A Gerar Código Intermédio (TAC) ---")
+    print("--- Análise Semântica concluída ---")
 
-        generator = MOCPIntermediateCodeGenerator(symbol_table)
-        generator.visit(tree)
+    # ------------------------------------------------------------------
+    # Geração de Código Intermédio (TAC em quádruplas estruturadas)
+    # ------------------------------------------------------------------
+    print("--- A iniciar Geração de Código Intermédio ---")
 
-        print("\n[Código Intermédio Original]:")
+    generator = MOCPIntermediateCodeGenerator(semantic_analyzer.symbol_table)
+    generator.visit(tree)
 
-        for instruction in generator.code:
-            print(instruction)
+    print("--- Geração de Código Intermédio concluída ---")
 
-        # Otimização do Código
-        print("\n--- A Otimizar Código ---")
+    print("\n==== CÓDIGO TAC GERADO ====")
+    for line in generator.get_code_as_strings():
+        print(line)
 
-        optimiser = MOCPCodeOptimiser(generator.code)
-        optimised_code = optimiser.optimize()
+    # ------------------------------------------------------------------
+    # Otimização do Código Intermédio
+    # ------------------------------------------------------------------
+    quadruplos_otimizados = optimizar_completo(
+        generator.quadruplos,
+        variaveis_utilizador=set()
+    )
 
-        print("\n[Código Intermédio Otimizado]:")
+    generator_temp = MOCPIntermediateCodeGenerator(semantic_analyzer.symbol_table)
+    generator_temp.quadruplos = quadruplos_otimizados
 
-        for instruction in optimised_code:
-            print(instruction)
+    print("\n==== CÓDIGO TAC OTIMIZADO ====")
+    for line in generator_temp.get_code_as_strings():
+        print(line)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
