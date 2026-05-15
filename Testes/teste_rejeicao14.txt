@@ -1,0 +1,12 @@
+/* escreverv() — Argumento Inválido */
+/* Regra: escreverv() exige um identificador simples de vetor. - inválido */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro v[5];
+    inteiro i;
+
+    escreverv(v);        /* válido */
+    escreverv(v[i]);     /* inválido: acesso indexado — erro semântico */
+    escreverv(v[0] + 1); /* inválido: expressão aritmética — erro semântico */
+}
