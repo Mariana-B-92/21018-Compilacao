@@ -1,0 +1,18 @@
+/* Eliminação de Código Inatingível */
+/* As instruções após 'retornar' nunca são executadas. */
+/* O otimizador deve removê-las do TAC otimizado. */
+inteiro obter(vazio);
+vazio principal(vazio);
+
+inteiro obter(vazio) {
+    retornar 42;
+    inteiro x;
+    x = 99;
+    escrever(x);
+}
+
+vazio principal(vazio) {
+    inteiro r;
+    r = obter();
+    escrever(r);
+}
