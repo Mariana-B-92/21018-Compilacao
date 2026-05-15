@@ -1,56 +1,167 @@
 from MOCPParser import MOCPParser
 from MOCPVisitor import MOCPVisitor
 
+
 class MOCPIntermediateCodeGenerator(MOCPVisitor):
+    """
+    Gera código intermédio TAC (Three Address Code) a partir da árvore sintática MOCP.
+    Cada instrução é representada como uma quádrupla estruturada:
+        {"op": str, "arg1": str|None, "arg2": str|None, "res": str|None}
+    """
+
     def __init__(self, symbol_table):
         self.symbol_table = symbol_table
-        self.code = []
+        self.quadruplos = []
         self.temp_count = 0
         self.label_count = 0
 
+    def visit(self, tree):
+        if tree is None:
+            return None
+        return tree.accept(self)
+
     # ==========================================
-    # 0. MÉTODOS AUXILIARES GERAIS
+    # 0. MÉTODOS AUXILIARES
     # ==========================================
 
     def generate_new_temp(self):
+        """Gera um novo temporário único (t1, t2, ...)."""
         self.temp_count += 1
         return f"t{self.temp_count}"
 
     def generate_new_label(self):
+        """Gera um novo label único (L1, L2, ...)."""
         self.label_count += 1
         return f"L{self.label_count}"
 
-    def emit(self, instruction):
-        self.code.append(instruction)
+    def emit(self, op, arg1=None, arg2=None, res=None):
+        """
+        Adiciona uma quádrupla à lista.
+        Para operações que produzem valor, gera automaticamente um temporário
+        se nenhum resultado for fornecido.
+        """
+        ops_sem_resultado = {
+            "label", "goto", "ifFalse", "return", "halt",
+            "param", "call_void", "write", "writec", "writev",
+            "writes", "alloc", "[]="
+        }
+        if res is None and op not in ops_sem_resultado:
+            res = self.generate_new_temp()
+
+        self.quadruplos.append({"op": op, "arg1": arg1, "arg2": arg2, "res": res})
+        return res
+
+    def _extract_identifier(self, expr_node):
+        """
+        Percorre o nó de expressão em busca de um IDENTIFIER simples.
+        Usado por WRITEV para obter o nome do vetor sem gerar temporários.
+        Retorna None se a expressão não for um identificador direto.
+        """
+        if expr_node is None:
+            return None
+        if isinstance(expr_node, MOCPParser.PrimaryContext):
+            if expr_node.IDENTIFIER() and expr_node.LBRACKET() is None:
+                return expr_node.IDENTIFIER().getText()
+            return None
+        if expr_node.getChildCount() == 1:
+            return self._extract_identifier(expr_node.getChild(0))
+        return None
+
+    def get_code_as_strings(self):
+        """
+        Converte as quádruplas para uma lista de strings legíveis.
+        _fmt() trata valores Python produzidos pelo otimizador:
+            True/False → "1"/"0",  None → ""
+        """
+
+        def _fmt(v):
+            if isinstance(v, bool):
+                return "1" if v else "0"
+            if v is None:
+                return ""
+            return str(v)
+
+        lines = []
+        for q in self.quadruplos:
+            op  = q["op"]
+            a1  = q.get("arg1")
+            a2  = q.get("arg2")
+            res = q.get("res")
+
+            if op == "label":
+                lines.append(f"{res}:")
+            elif op == "goto":
+                lines.append(f"goto {res}")
+            elif op == "ifFalse":
+                lines.append(f"ifFalse {_fmt(a1)} goto {res}")
+            elif op == "=":
+                lines.append(f"{res} = {_fmt(a1)}")
+            elif op in {"+", "-", "*", "/", "%", "==", "!=", "<", "<=", ">", ">=", "&&", "||"}:
+                lines.append(f"{res} = {_fmt(a1)} {op} {_fmt(a2)}")
+            elif op == "minus":
+                lines.append(f"{res} = -{_fmt(a1)}")
+            elif op == "not":
+                lines.append(f"{res} = !{_fmt(a1)}")
+            elif op == "cast":
+                lines.append(f"{res} = ({a1}) {_fmt(a2)}")
+            elif op == "[]":
+                lines.append(f"{res} = {a1}[{_fmt(a2)}]")
+            elif op == "[]=":
+                lines.append(f"{res}[{_fmt(a1)}] = {_fmt(a2)}")
+            elif op == "alloc":
+                lines.append(f"alloc {res}, {a1}")
+            elif op == "param":
+                lines.append(f"param {_fmt(a1)}")
+            elif op == "call":
+                lines.append(f"{res} = call {a1}, {a2}")
+            elif op == "call_void":
+                lines.append(f"call {a1}, {a2}")
+            elif op == "return":
+                lines.append(f"return {_fmt(a1)}" if a1 is not None else "return")
+            elif op == "halt":
+                lines.append("halt")
+            elif op == "write":
+                lines.append(f"write {_fmt(a1)}")
+            elif op == "writec":
+                lines.append(f"writec {_fmt(a1)}")
+            elif op == "writev":
+                lines.append(f"writev {a1}")
+            elif op == "writes":
+                lines.append(f"writes {a1}")
+            else:
+                lines.append(str(q))
+        return lines
 
     # ==========================================
     # 1. FUNÇÕES
     # ==========================================
 
     def visitMainFunction(self, context: MOCPParser.MainFunctionContext):
-        """
-        Regra: VOID MAIN LPAREN RPAREN block
-        """
-
+        """Emite o label 'principal', o corpo, halt e o label de fim."""
         main_name = context.MAIN().getText()
-
-        # Emite o rótulo do ponto de entrada do programa
-        self.emit(f"{main_name}:")
-
-        # Visita o bloco da função principal
+        self.emit("label", res=main_name)
         self.visit(context.block())
+        self.emit("halt")
+        self.emit("label", res=f"end_{main_name}")
         return None
 
     def visitFunctionDef(self, context: MOCPParser.FunctionDefContext):
         """
-        Regra: returnType IDENTIFIER LPAREN parameters? RPAREN block
+        Emite o label da função, vincula cada parâmetro formal ao seu
+        valor de entrada (paramN → nome), visita o corpo e fecha com end_nome.
         """
-
         function_name = context.IDENTIFIER().getText()
+        self.emit("label", res=function_name)
 
-        self.emit(f"{function_name}:")
+        if context.defParameters():
+            params = context.defParameters()
+            if not params.VOID():
+                for i, param in enumerate(params.parameterDef()):
+                    param_name = param.IDENTIFIER().getText()
+                    self.emit("=", arg1=f"param{i + 1}", res=param_name)
+
         self.visit(context.block())
-
+        self.emit("label", res=f"end_{function_name}")
         return None
 
     # ==========================================
@@ -59,133 +170,193 @@ class MOCPIntermediateCodeGenerator(MOCPVisitor):
 
     def visitVariable(self, context: MOCPParser.VariableContext):
         """
-        Regra: IDENTIFIER | IDENTIFIER ASSIGN expression | IDENTIFIER LBRACKET NUMBER RBRACKET | IDENTIFIER LBRACKET RBRACKET ASSIGN READS LPAREN RPAREN
-               | IDENTIFIER LBRACKET RBRACKET ASSIGN arrayBlock | IDENTIFIER LBRACKET NUMBER RBRACKET ASSIGN arrayBlock
+        Trata todas as formas de declaração:
+          - sem inicialização: nada a emitir (valor por omissão é 0)
+          - com expressão: emite atribuição
+          - com lers(): emite call lers (tamanho determinado em runtime)
+          - com bloco de valores: delega em _emit_array_block
+          - com tamanho fixo: emite alloc
         """
         variable_name = context.IDENTIFIER().getText()
 
-        # Se a variável for inicializada na declaração (ex: inteiro m = 1;)
         if context.ASSIGN():
             if context.expression():
-                expression = self.visit(context.expression())
-                self.emit(f"{variable_name} = {expression}")
-
+                expr_val = context.expression().accept(self)
+                self.emit("=", arg1=expr_val, res=variable_name)
             elif context.READS():
                 temp = self.generate_new_temp()
-                self.emit(f"{temp} = call lers, 0")
-                self.emit(f"{variable_name} = {temp}")
+                self.emit("call", arg1="lers", arg2="0", res=temp)
+                self.emit("=", arg1=temp, res=variable_name)
+            elif context.arrayBlock():
+                self._emit_array_block(variable_name, context.arrayBlock())
+        elif context.LBRACKET() and context.NUMBER():
+            size = context.NUMBER().getText()
+            self.emit("alloc", arg1=size, res=variable_name)
 
         return None
 
-    # ==========================================
-    # 3. EXPRESSÕES E VERIFICAÇÃO DE TIPOS
-    # ==========================================
-
-    def visitPrimary(self, context:MOCPParser.PrimaryContext):
+    def _emit_array_block(self, array_name, array_block_ctx):
         """
-        Regra: LPAREN expression RPAREN | functionCall | IDENTIFIER | IDENTIFIER LBRACKET expression RBRACKET | NUMBER | REAL_NUM | STRING_LITERAL
+        Inicializa um vetor com lista de valores literais.
+        O offset de cada elemento é calculado em tempo de compilação
+        (inteiro: 4 bytes, real: 8 bytes).
         """
-
-        # Acesso a Vetor: IDENTIFIER[expression]
-        if context.IDENTIFIER() and context.LBRACKET():
-            array_name = context.IDENTIFIER().getText()
-
-            index_expression = self.visit(context.expression())
-
-            # Consulta o tamanho na tabela de símbolos para calcular o offset
+        if array_block_ctx.valueList():
+            values = array_block_ctx.valueList().expression()
             symbol = self.symbol_table.resolve(array_name)
             width = 8 if symbol and symbol.get("type") == "real" else 4
+            self.emit("alloc", arg1=str(len(values)), res=array_name)
+            for i, expr in enumerate(values):
+                val = self.visit(expr)
+                offset_temp = self.generate_new_temp()
+                self.emit("=", arg1=str(i * width), res=offset_temp)
+                self.emit("[]=", arg1=offset_temp, arg2=val, res=array_name)
 
-            # Cria um temporário para calcular o offset (índice * largura)
+    # ==========================================
+    # 3. EXPRESSÕES
+    # ==========================================
+
+    def visitPrimary(self, context: MOCPParser.PrimaryContext):
+        """
+        Trata os casos base: literais, identificadores, acessos indexados
+        a vetores e chamadas de função.
+        Para vetores, calcula o offset (índice × largura) antes de emitir [].
+        """
+        if context.IDENTIFIER() and context.LBRACKET():
+            array_name = context.IDENTIFIER().getText()
+            index_expr = context.expression().accept(self)
+            symbol = self.symbol_table.resolve(array_name)
+            width = 8 if symbol and symbol.get("type") == "real" else 4
             offset = self.generate_new_temp()
-            self.emit(f"{offset} = {index_expression} * {width}")
-
-            # Lê o valor do vetor na memória para um novo temporário de resultado
-            result_temp = self.generate_new_temp()
-            self.emit(f"{result_temp} = {array_name}[{offset}]")
-
-            return result_temp
-
-        # Variável simples: IDENTIFIER
+            self.emit("*", arg1=index_expr, arg2=str(width), res=offset)
+            result = self.generate_new_temp()
+            self.emit("[]", arg1=array_name, arg2=offset, res=result)
+            return result
         elif context.IDENTIFIER():
             return context.IDENTIFIER().getText()
-
-        # Expressão entre parênteses: (expression)
         elif context.LPAREN() and context.expression():
             return self.visit(context.expression())
-
-        # Literais
         elif context.NUMBER():
             return context.NUMBER().getText()
         elif context.REAL_NUM():
             return context.REAL_NUM().getText()
         elif context.STRING_LITERAL():
             return context.STRING_LITERAL().getText()
-
-        # Chamada de função
         elif context.functionCall():
             return self.visit(context.functionCall())
-
         return None
 
-    def visitExpressionAdd(self, context: MOCPParser.ExpressionAddContext):
-        """
-        Regra: expressionAdd PLUS expressionMul | expressionAdd MINUS expressionMul | expressionMul
-        """
+    # Expressões binárias: visitam os dois operandos e emitem a operação.
+    # Se tiver apenas um filho, delega para o nível de precedência abaixo.
 
-        # Se só tem um filho, é apenas a passagem para o nível inferior de precedência
+    def visitExpressionAdd(self, context: MOCPParser.ExpressionAddContext):
         if context.getChildCount() == 1:
             return self.visit(context.getChild(0))
-
         left = self.visit(context.getChild(0))
         right = self.visit(context.getChild(2))
-        operator = context.getChild(1).getText()
+        op = context.getChild(1).getText() if context.getChild(1) else ""
+        return self.emit(op, arg1=left, arg2=right)
 
-        # Gerar temporário e emitir instrução TAC
-        temp = self.generate_new_temp()
-        self.emit(f"{temp} = {left} {operator} {right}")
+    def visitExpressionMul(self, context: MOCPParser.ExpressionMulContext):
+        if context.getChildCount() == 1:
+            return self.visit(context.getChild(0))
+        left = self.visit(context.getChild(0))
+        right = self.visit(context.getChild(2))
+        op = context.getChild(1).getText() if context.getChild(1) else ""
+        return self.emit(op, arg1=left, arg2=right)
 
-        return temp
+    def visitExpressionEquality(self, context: MOCPParser.ExpressionEqualityContext):
+        if context.getChildCount() == 1:
+            return self.visit(context.getChild(0))
+        left = self.visit(context.getChild(0))
+        right = self.visit(context.getChild(2))
+        op = context.getChild(1).getText() if context.getChild(1) else ""
+        return self.emit(op, arg1=left, arg2=right)
+
+    def visitExpressionRelational(self, context: MOCPParser.ExpressionRelationalContext):
+        if context.getChildCount() == 1:
+            return self.visit(context.getChild(0))
+        left = self.visit(context.getChild(0))
+        right = self.visit(context.getChild(2))
+        op = context.getChild(1).getText() if context.getChild(1) else ""
+        return self.emit(op, arg1=left, arg2=right)
+
+    def visitExpressionOr(self, context: MOCPParser.ExpressionOrContext):
+        if context.getChildCount() == 1:
+            return self.visit(context.getChild(0))
+        left = self.visit(context.getChild(0))
+        right = self.visit(context.getChild(2))
+        return self.emit("||", arg1=left, arg2=right)
+
+    def visitExpressionAnd(self, context: MOCPParser.ExpressionAndContext):
+        if context.getChildCount() == 1:
+            return self.visit(context.getChild(0))
+        left = self.visit(context.getChild(0))
+        right = self.visit(context.getChild(2))
+        return self.emit("&&", arg1=left, arg2=right)
+
+    def visitExpressionUnary(self, context: MOCPParser.ExpressionUnaryContext):
+        """Negação aritmética (-) ou lógica (!), mapeadas para 'minus' e 'not'."""
+        if context.getChildCount() == 1:
+            return self.visit(context.getChild(0))
+        op_text = context.getChild(0).getText() if context.getChild(0) else ""
+        expr = self.visit(context.getChild(1))
+        op = "minus" if op_text == "-" else "not"
+        return self.emit(op, arg1=expr)
+
+    def visitCastExpr(self, context: MOCPParser.CastExprContext):
+        """Cast explícito (inteiro) ou (real), emitido como op 'cast'."""
+        if context.getChildCount() == 1:
+            return self.visit(context.getChild(0))
+        cast_type = context.getChild(1).getText() if context.getChild(1) else ""
+        expr = self.visit(context.getChild(3))
+        return self.emit("cast", arg1=cast_type, arg2=expr)
 
     # ==========================================
-    # 4. ATRIBUIÇÕES E INSTRUÇÕES
+    # 4. ATRIBUIÇÕES
     # ==========================================
 
     def visitAssignStatement(self, context: MOCPParser.AssignStatementContext):
         """
-        Regra: IDENTIFIER ASSIGN expression SEMI_COLON | IDENTIFIER LBRACKET expression RBRACKET ASSIGN expression SEMI_COLON
+        Atribuição simples (x = expr) ou indexada (v[i] = expr).
+        Para vetores, calcula o offset antes de emitir []=.
         """
-
         variable_name = context.IDENTIFIER().getText()
 
-        # Tratar apenas de atribuições a variáveis simples, sem vetores
         if context.LBRACKET() is None:
-            # Visita a expressão à direita do '=' para obter o seu endereço final/temporário
-            expression = self.visit(context.expression(0))
-
-            # Emite a instrução final de atribuição
-            self.emit(f"{variable_name} = {expression}")
+            expr_val = self.visit(context.expression(0))
+            self.emit("=", arg1=expr_val, res=variable_name)
         else:
-            # Lógica para atribuições a vetores: x[i] = y
-            # Obtém as duas expressões envolvidas:
-            # expression(0) é o índice 'i', expression(1) é o valor 'y'
             index = self.visit(context.expression(0))
             value = self.visit(context.expression(1))
-
-            # Consultamos o tipo da variável na tabela de símbolos para saber a largura.
-            # Se não estiver declarada, assumimos um valor seguro (ex: 4).
             symbol = self.symbol_table.resolve(variable_name)
             width = 8 if symbol and symbol.get("type") == "real" else 4
-
-            # Cria um temporário para calcular o offset (índice * largura)
             offset = self.generate_new_temp()
-            self.emit(f"{offset} = {index} * {width}")
-
-            # Emite a instrução final de atribuição indexada ao vetor
-            self.emit(f"{variable_name}[{offset}] = {value}")
-            pass
+            self.emit("*", arg1=index, arg2=str(width), res=offset)
+            self.emit("[]=", arg1=offset, arg2=value, res=variable_name)
 
         return None
+
+    def visitExpressionOrAssign(self, context: MOCPParser.ExpressionOrAssignContext):
+        """
+        Usado nas partes de inicialização e atualização do ciclo 'para'.
+        Pode ser uma atribuição (i = 0) ou uma expressão pura.
+        """
+        if context.ASSIGN():
+            variable_name = context.IDENTIFIER().getText()
+            if context.LBRACKET() is None:
+                expr_val = self.visit(context.expression(0))
+                self.emit("=", arg1=expr_val, res=variable_name)
+            else:
+                index = self.visit(context.expression(0))
+                value = self.visit(context.expression(1))
+                symbol = self.symbol_table.resolve(variable_name)
+                width = 8 if symbol and symbol.get("type") == "real" else 4
+                offset = self.generate_new_temp()
+                self.emit("*", arg1=index, arg2=str(width), res=offset)
+                self.emit("[]=", arg1=offset, arg2=value, res=variable_name)
+            return None
+        return self.visit(context.expression(0))
 
     # ==========================================
     # 5. CHAMADAS DE FUNÇÃO
@@ -193,283 +364,94 @@ class MOCPIntermediateCodeGenerator(MOCPVisitor):
 
     def visitFunctionCall(self, context: MOCPParser.FunctionCallContext):
         """
-        Regra: IDENTIFIER LPAREN arguments? RPAREN | READ LPAREN RPAREN | READC LPAREN RPAREN | READS LPAREN RPAREN
+        Emite um 'param' por cada argumento (da esquerda para a direita),
+        seguido de 'call nome, nargs'. Funções built-in (ler, lerc, lers)
+        não têm argumentos explícitos.
         """
-
-        # Identificar o nome da função e os argumentos
-        args_context = None
-        function_name = None
-
         if context.IDENTIFIER():
             function_name = context.IDENTIFIER().getText()
-            args_context = context.arguments()
+            args = []
+            if context.arguments():
+                for expr in context.arguments().expression():
+                    args.append(self.visit(expr))
         elif context.READ():
-            function_name = "ler"
+            function_name, args = "ler", []
         elif context.READC():
-            function_name = "lerc"
+            function_name, args = "lerc", []
         elif context.READS():
-            function_name = "lers"
-
-        args = []
-
-        # Visitar e recolher o endereço de cada argumento (E1, E2, ..., En)
-        if args_context:
-            for expression in args_context.expression():
-                args.append(self.visit(expression))
-
-        # Emitir instrução 'param' para cada argumento
-        for arg in args:
-            self.emit(f"param {arg}")
-
-        num_args = len(args)
-        temp = self.generate_new_temp()
-
-        # Emitir instrução call que atribui o valor de retorno ao temporário
-        self.emit(f"{temp} = call {function_name}, {num_args}")
-
-        return temp
-
-    # ==========================================
-    # 6. RESTANTES EXPRESSÕES E PRECEDÊNCIAS
-    # ==========================================
-
-    def visitExpressionOr(self, context: MOCPParser.ExpressionOrContext):
-        """
-        Regra: expressionOr OR expressionAnd | expressionAnd
-        """
-        if context.getChildCount() == 1:
-            return self.visit(context.getChild(0))
-
-        left = self.visit(context.getChild(0))
-        right = self.visit(context.getChild(2))
-        operator = context.getChild(1).getText()
-
-        temp = self.generate_new_temp()
-        self.emit(f"{temp} = {left} {operator} {right}")
-        return temp
-
-    def visitExpressionOrAssign(self, context: MOCPParser.ExpressionOrAssignContext):
-        """
-        Regra: IDENTIFIER (LBRACKET expression RBRACKET)? ASSIGN expression | expression
-        """
-
-        # Se for uma atribuição (ex: i = 0 ou i = i + 1)
-        if context.ASSIGN():
-            variable_name = context.IDENTIFIER().getText()
-
-            # Se for uma atribuição simples
-            if context.LBRACKET() is None:
-                expression = self.visit(context.expression(0))
-                self.emit(f"{variable_name} = {expression}")
-
-            # Se for uma atribuição a um vetor (x[i] = y)
-            else:
-                index = self.visit(context.expression(0))
-                value = self.visit(context.expression(1))
-
-                symbol = self.symbol_table.resolve(variable_name)
-                width = 8 if symbol and symbol.get("type") == "real" else 4
-
-                offset = self.generate_new_temp()
-                self.emit(f"{offset} = {index} * {width}")
-                self.emit(f"{variable_name}[{offset}] = {value}")
-
+            function_name, args = "lers", []
+        else:
             return None
 
-        # Se for apenas uma expressão sem atribuição
-        return self.visit(context.expression(0))
+        for arg in args:
+            self.emit("param", arg1=arg)
 
-    def visitExpressionAnd(self, context: MOCPParser.ExpressionAndContext):
-        """
-        Regra: expressionAnd AND expressionEquality | expressionEquality
-        """
-
-        if context.getChildCount() == 1:
-            return self.visit(context.getChild(0))
-
-        left = self.visit(context.getChild(0))
-        right = self.visit(context.getChild(2))
-        operator = context.getChild(1).getText()
-
-        temp = self.generate_new_temp()
-        self.emit(f"{temp} = {left} {operator} {right}")
-        return temp
-
-    def visitExpressionMul(self, context: MOCPParser.ExpressionMulContext):
-        """
-        Regra: expressionMul MULT expressionUnary | expressionMul DIV expressionUnary | expressionMul MOD expressionUnary | expressionUnary
-        """
-
-        if context.getChildCount() == 1:
-            return self.visit(context.getChild(0))
-
-        left = self.visit(context.getChild(0))
-        right = self.visit(context.getChild(2))
-        operator = context.getChild(1).getText()
-
-        temp = self.generate_new_temp()
-        self.emit(f"{temp} = {left} {operator} {right}")
-
-        return temp
-
-    def visitExpressionEquality(self, context: MOCPParser.ExpressionEqualityContext):
-        """
-        Regra: == | !=
-        """
-
-        if context.getChildCount() == 1:
-            return self.visit(context.getChild(0))
-
-        left = self.visit(context.getChild(0))
-        right = self.visit(context.getChild(2))
-        operator = context.getChild(1).getText()
-
-        temp = self.generate_new_temp()
-        self.emit(f"{temp} = {left} {operator} {right}")
-        return temp
-
-    def visitExpressionRelational(self, context: MOCPParser.ExpressionRelationalContext):
-        """
-        Regra: expressionAdd relationalOp expressionAdd | expressionAdd
-        """
-
-        if context.getChildCount() == 1:
-            return self.visit(context.getChild(0))
-
-        left = self.visit(context.getChild(0))
-        right = self.visit(context.getChild(2))
-        operator = context.getChild(1).getText()
-
-        temp = self.generate_new_temp()
-        self.emit(f"{temp} = {left} {operator} {right}")
-        return temp
-
-    def visitExpressionUnary(self, context: MOCPParser.ExpressionUnaryContext):
-        """
-        Regra: ! | - | (cast)
-        """
-
-        if context.getChildCount() == 1:
-            return self.visit(context.getChild(0))
-
-        # O operador unário é o primeiro filho: '!' ou '-'
-        operator = context.getChild(0).getText()
-        expression = self.visit(context.getChild(1))
-
-        temp = self.generate_new_temp()
-
-        if operator == '-':
-            # Usamos 'minus' para distinguir da subtração binária
-            self.emit(f"{temp} = minus {expression}")
-        elif operator == '!':
-            self.emit(f"{temp} = not {expression}")
-
-        return temp
-
-    def visitCastExpr(self, context: MOCPParser.CastExprContext):
-        """
-        Regra: LPAREN type RPAREN castExpr | primary
-        """
-
-        if context.getChildCount() == 1:
-            return self.visit(context.getChild(0))
-
-        # O tipo do cast está no índice 1: '(' type ')' castExpr
-        cast_type = context.getChild(1).getText()
-        expression = self.visit(context.getChild(3))
-
-        temp = self.generate_new_temp()
-
-        self.emit(f"{temp} = ({cast_type}) {expression}")
-        return temp
+        result = self.generate_new_temp()
+        self.emit("call", arg1=function_name, arg2=str(len(args)), res=result)
+        return result
 
     # ==========================================
-    # 6. INSTRUÇÕES DE CONTROLO E CICLOS
+    # 6. CONTROLO DE FLUXO E CICLOS
     # ==========================================
 
     def visitStatement(self, context: MOCPParser.StatementContext):
         """
-        Regra: IF LPAREN expression RPAREN block (ELSE block)? | whileStatement | forStatement | returnStatement | assignStatement | expressionStatement | declaration | block
+        Condicional se/senao: emite ifFalse para saltar o bloco 'then'.
+        Com 'senao', acrescenta um goto antes do bloco 'else' para que
+        o bloco 'then' não caia no 'else' após terminar.
         """
-
         if context.IF():
-            # Avalia a expressão da condição (ex: t1 = x > y)
             condition = self.visit(context.expression())
-
             label_false = self.generate_new_label()
-            label_end = self.generate_new_label()
+            label_end   = self.generate_new_label()
 
-            # Desvio condicional: se a condição for falsa, salta para label_false
-            self.emit(f"ifFalse {condition} goto {label_false}")
-
-            # Visita o código do bloco IF (verdadeiro)
+            self.emit("ifFalse", arg1=condition, res=label_false)
             self.visit(context.block(0))
 
             if context.ELSE():
-                # Se tiver ELSE, o bloco IF precisa de saltar o bloco ELSE no final
-                self.emit(f"goto {label_end}")
-                self.emit(f"{label_false}:")
-
-                # Visita o código do bloco ELSE
+                self.emit("goto", res=label_end)
+                self.emit("label", res=label_false)
                 self.visit(context.block(1))
-                self.emit(f"{label_end}:")
+                self.emit("label", res=label_end)
             else:
-                # Se não tiver ELSE, a label_false serve apenas para marcar o fim do IF
-                self.emit(f"{label_false}:")
+                self.emit("label", res=label_false)
+
             return None
 
-        # Para as outras alternativas da regra (enquanto, para, etc.),
-        # deixamos o ANTLR descer automaticamente para as regras específicas.
         return self.visitChildren(context)
 
-    def visitWhileStatement(self, context:MOCPParser.WhileStatementContext):
+    def visitWhileStatement(self, context: MOCPParser.WhileStatementContext):
         """
-        Regra: WHILE LPAREN expression RPAREN block
+        Ciclo enquanto: label de início → avalia condição → ifFalse sai
+        → corpo → goto início → label de saída.
         """
         label_begin = self.generate_new_label()
-        label_end = self.generate_new_label()
+        label_end   = self.generate_new_label()
 
-        # Marca o início do ciclo
-        self.emit(f"{label_begin}:")
-
-        # Avalia a condição no início de cada iteração
+        self.emit("label",   res=label_begin)
         condition = self.visit(context.expression())
-
-        # Se a condição falhar, sai do ciclo
-        self.emit(f"ifFalse {condition} goto {label_end}")
-
-        # Visita o corpo do ciclo
+        self.emit("ifFalse", arg1=condition, res=label_end)
         self.visit(context.block())
-
-        # No fim do corpo, salta incondicionalmente de volta para o início
-        self.emit(f"goto {label_begin}")
-
-        # Marca a saída do ciclo
-        self.emit(f"{label_end}:")
-
+        self.emit("goto",    res=label_begin)
+        self.emit("label",   res=label_end)
         return None
 
     def visitForStatement(self, context: MOCPParser.ForStatementContext):
         """
-        Regra: FOR LPAREN expressionOrAssign? SEMI_COLON expression? SEMI_COLON expressionOrAssign? RPAREN block
+        Ciclo para: inicialização → label início → condição → corpo
+        → atualização → goto início → label saída.
+        Os três campos são identificados percorrendo os filhos do nó
+        e distinguindo pelos tipos e pela posição dos ';'.
         """
-
         initializer_node = None
-        condition_node = None
-        update_node = None
-
-        assign_idx = 0
+        condition_node   = None
+        update_node      = None
         passed_first_semi = False
-        passed_second_semi = False
 
         for i in range(context.getChildCount()):
             child = context.getChild(i)
-
-            if child.getText() == ';':
-                if not passed_first_semi:
-                    passed_first_semi = True
-                else:
-                    passed_second_semi = True
+            if child is not None and child.getText() == ";":
+                passed_first_semi = True
             elif isinstance(child, MOCPParser.ExpressionOrAssignContext):
                 if not passed_first_semi:
                     initializer_node = child
@@ -478,78 +460,57 @@ class MOCPIntermediateCodeGenerator(MOCPVisitor):
             elif isinstance(child, MOCPParser.ExpressionContext):
                 condition_node = child
 
-        # --- Criação de TAC ---
-
-        # Inicialização
         if initializer_node:
             self.visit(initializer_node)
 
         label_begin = self.generate_new_label()
-        label_end = self.generate_new_label()
+        label_end   = self.generate_new_label()
 
-        # Início do Ciclo
-        self.emit(f"{label_begin}:")
-
-        # Condição
+        self.emit("label", res=label_begin)
         if condition_node:
             condition = self.visit(condition_node)
-            self.emit(f"ifFalse {condition} goto {label_end}")
+            self.emit("ifFalse", arg1=condition, res=label_end)
 
-        # Corpo do Ciclo
         self.visit(context.block())
 
-        # Atualização
         if update_node:
             self.visit(update_node)
 
-        # Voltar ao início e marcar o fim
-        self.emit(f"goto {label_begin}")
-        self.emit(f"{label_end}:")
-
+        self.emit("goto",  res=label_begin)
+        self.emit("label", res=label_end)
         return None
 
     # ==========================================
-    # 7. INSTRUÇÕES DE ENTRADA / SAÍDA (MOCP)
+    # 7. ENTRADA / SAÍDA
     # ==========================================
 
     def visitWriteStatement(self, context: MOCPParser.WriteStatementContext):
         """
-        Regra: WRITE LPAREN expression RPAREN SEMI_COLON | WRITEC LPAREN expression RPAREN SEMI_COLON | WRITEV LPAREN IDENTIFIER RPAREN SEMI_COLON
-               | WRITES LPAREN stringArgument RPAREN SEMI_COLON
+        Mapeia cada função de escrita para a instrução TAC correspondente.
+        Para escreverv(), usa _extract_identifier para obter o nome do vetor
+        diretamente, sem criar temporários (a semântica já validou o argumento).
         """
-
-        if context.WRITE() or context.WRITEC():
-            function_name = "escrever" if context.WRITE() else "escreverc"
-            expression = self.visit(context.expression())
-            self.emit(f"param {expression}")
-            self.emit(f"call {function_name}, 1")
-
+        if context.WRITE():
+            self.emit("write",  arg1=self.visit(context.expression()))
+        elif context.WRITEC():
+            self.emit("writec", arg1=self.visit(context.expression()))
         elif context.WRITEV():
-            array_name = context.IDENTIFIER().getText()
-            self.emit(f"param {array_name}")
-            self.emit("call escreverv, 1")
-
+            array_name = self._extract_identifier(context.expression())
+            if array_name is None:
+                array_name = self.visit(context.expression())
+            self.emit("writev", arg1=array_name)
         elif context.WRITES():
-            string_arg = context.stringArgument().getText()
-            self.emit(f"param {string_arg}")
-            self.emit("call escrevers, 1")
-
+            self.emit("writes", arg1=context.stringArgument().getText())
         return None
 
     # ==========================================
-    # 8. RETORNO DE FUNÇÕES
+    # 8. RETORNO
     # ==========================================
 
     def visitReturnStatement(self, context: MOCPParser.ReturnStatementContext):
-        """
-        Regra: RETURN expression? SEMI_COLON
-        """
-
-        # Se retornar um valor, calcula a expressão primeiro
+        """Emite 'return valor' ou 'return' consoante a função retorne ou não um valor."""
         if context.expression():
-            expression = self.visit(context.expression())
-            self.emit(f"return {expression}")
+            self.emit("return", arg1=self.visit(context.expression()))
         else:
             self.emit("return")
-
         return None
