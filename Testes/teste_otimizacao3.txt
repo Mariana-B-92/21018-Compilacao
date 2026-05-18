@@ -1,6 +1,7 @@
 /* Eliminação de Código Inatingível */
-/* As instruções após 'retornar' nunca são executadas. */
-/* O otimizador deve removê-las do TAC otimizado. */
+/* As instruções após 'retornar' nunca podem ser executadas. */
+/* O otimizador deve removê-las do TAC otimizado, mantendo apenas */
+/* o 'return 42'. A função obter() é preservada porque é chamada em principal. */
 inteiro obter(vazio);
 vazio principal(vazio);
 
