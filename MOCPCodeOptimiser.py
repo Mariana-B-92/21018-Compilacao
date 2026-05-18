@@ -107,6 +107,22 @@ def _detectar_variaveis_de_ciclo(quadruplos: TAC) -> Set[str]:
     return vars_ciclo
 
 
+
+def _is_label_funcao(lbl) -> bool:
+    """
+    Devolve True se 'lbl' é um label de função e não um label temporário ou de fecho.
+
+    OK → Labels de função: nomes como 'principal', 'fact', 'somaDigitos'.
+    NK → Labels temporários: 'L1', 'L21' (padrão L<dígitos>).
+    NK → Labels de fecho: 'end_principal', 'end_fact'.
+    """
+    if lbl.startswith("end_") or lbl.startswith("_"):
+        return False
+    if lbl.startswith("L") and lbl[1:].isdigit():
+        return False
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Bloco Básico — unidade do CFG
 # ---------------------------------------------------------------------------
@@ -164,13 +180,14 @@ class MOCPCodeOptimiser:
         """Aplica todas as otimizações por ordem, com ponto fixo onde necessário."""
         _debug("=== Início das Otimizações ===")
 
+        self.eliminar_codigo_inatingivel()  # 1ª passagem — limpa blocos mortos antes do folding
         self.constant_folding()
         self.propagacao_copias()
         self.eliminar_subexpressoes_comuns()
         self.mover_invariantes()
-        self.constant_folding()        # 2ª passagem — aproveita propagações anteriores
+        self.constant_folding()             # 2ª passagem — aproveita propagações anteriores
         self.propagacao_copias()
-        self.eliminar_codigo_inatingivel()
+        self.eliminar_codigo_inatingivel()  # 2ª passagem — LICM pode ter criado novos blocos inatingíveis
 
         # Código morto: repete até estabilizar
         prev = None
@@ -354,7 +371,7 @@ class MOCPCodeOptimiser:
         }
 
         ops_com_efeitos = {
-            "call", "call_void", "return", "halt",
+            "call", "return", "halt",
             "write", "writec", "writev", "writes",
             "alloc", "[]=", "goto", "ifFalse", "label", "param"
         }
@@ -409,7 +426,8 @@ class MOCPCodeOptimiser:
     def _identificar_lideres(self) -> Set[int]:
         """
         Identifica os índices líderes de blocos básicos:
-        a primeira instrução, alvos de saltos e instruções após saltos.
+        a primeira instrução, alvos de saltos, instruções após saltos,
+        e todos os labels de função (que iniciam sempre um novo bloco).
         """
         lideres: Set[int] = {0}
         temp_labels: Dict[str, int] = {}
@@ -417,6 +435,10 @@ class MOCPCodeOptimiser:
         for i, q in enumerate(self.quadruplos):
             if q["op"] == "label" and q.get("res"):
                 temp_labels[q["res"]] = i
+                # Labels de função são sempre líderes — iniciam um bloco próprio
+                # independentemente de serem ou não alvos de saltos explícitos.
+                if _is_label_funcao(q["res"]):
+                    lideres.add(i)
 
         for i, q in enumerate(self.quadruplos):
             if q["op"] in {"goto", "ifFalse"}:
@@ -497,10 +519,29 @@ class MOCPCodeOptimiser:
 
         return visitados
 
+
+    def _identificar_entradas_de_funcao(self) -> Set[int]:
+        """
+        Devolve o conjunto de IDs de blocos que são pontos de entrada de funções.
+
+        O BFS parte de TODOS os pontos de entrada para evitar que funções
+        definidas antes de 'principal' façam com que 'principal' seja
+        eliminada por não ter predecessor no CFG intra-procedimental.
+        """
+        entradas: Set[int] = {0}
+        for bloco in self.blocos:
+            for q in bloco.quadruplas:
+                if q["op"] == "label" and _is_label_funcao(q.get("res")):
+                    entradas.add(bloco.id_bloco)
+                    break
+        return entradas
+
     def eliminar_codigo_inatingivel(self) -> TAC:
         """
         Constrói o CFG e remove os blocos que não são alcançáveis a partir
-        do bloco de entrada. Saltos para blocos eliminados são também descartados.
+        de qualquer ponto de entrada de função. O BFS parte de todos os labels
+        de função, evitando eliminar incorretamente funções como 'principal'
+        que não têm predecessores no CFG intra-procedimental.
         """
         if not self.quadruplos:
             return []
@@ -508,7 +549,9 @@ class MOCPCodeOptimiser:
         lideres     = self._identificar_lideres()
         self._construir_blocos(lideres)
         self._construir_cfg()
-        alcancaveis = self._bfs_alcancaveis(0)
+        alcancaveis: Set[int] = set()
+        for entrada in self._identificar_entradas_de_funcao():
+            alcancaveis |= self._bfs_alcancaveis(entrada)
 
         labels_alcancaveis: Set[str] = set()
         for bloco in self.blocos:
@@ -549,7 +592,7 @@ class MOCPCodeOptimiser:
         são sempre preservadas.
         """
         ops_com_efeitos: Set[str] = {
-            "call", "call_void", "return", "halt",
+            "call", "return", "halt",
             "write", "writec", "writev", "writes",
             "goto", "ifFalse", "label", "alloc", "[]=", "param"
         }
