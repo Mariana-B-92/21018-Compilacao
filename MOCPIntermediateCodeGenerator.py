@@ -42,7 +42,7 @@ class MOCPIntermediateCodeGenerator(MOCPVisitor):
         """
         ops_sem_resultado = {
             "label", "goto", "ifFalse", "return", "halt",
-            "param", "call_void", "write", "writec", "writev",
+            "param", "write", "writec", "writev",
             "writes", "alloc", "[]="
         }
         if res is None and op not in ops_sem_resultado:
@@ -114,8 +114,6 @@ class MOCPIntermediateCodeGenerator(MOCPVisitor):
                 lines.append(f"param {_fmt(a1)}")
             elif op == "call":
                 lines.append(f"{res} = call {a1}, {a2}")
-            elif op == "call_void":
-                lines.append(f"call {a1}, {a2}")
             elif op == "return":
                 lines.append(f"return {_fmt(a1)}" if a1 is not None else "return")
             elif op == "halt":
