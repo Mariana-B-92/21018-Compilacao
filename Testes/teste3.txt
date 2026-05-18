@@ -9,4 +9,6 @@ vazio principal(vazio) {
     } senao {
         x = y;
     }
+    escrever(x);
+    escrever(y);
 }
