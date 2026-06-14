@@ -113,7 +113,7 @@ python3 main.py Testes/teste1.mocp -p3
 ```
 ⚠️ As opções `-tree` e `-gui` requerem que o ANTLR4 esteja instalado e que o `antlr4-parse` esteja configurado no PATH do sistema.
 
-⚠️ A opção `-p3` rejeita programas que usem o tipo `real` com uma mensagem clara, dado que o CPU P3 não tem unidade de vírgula flutuante. As restantes fases continuam a funcionar normalmente para esses programas.
+⚠️ A opção `-p3` rejeita programas que usem o tipo `real` com uma mensagem clara, dado que o P3 não tem unidade de vírgula flutuante. As restantes fases continuam a funcionar normalmente para esses programas.
 
 ---
 
