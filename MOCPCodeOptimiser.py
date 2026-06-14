@@ -56,7 +56,7 @@ def _avaliar_op(op: str, v1, v2):
         "+": lambda a, b: a + b,
         "-": lambda a, b: a - b,
         "*": lambda a, b: a * b,
-        "/": lambda a, b: a / b,
+        "/": lambda a, b: a // b,
         "%": lambda a, b: a % b,
         "==": lambda a, b: a == b,
         "!=": lambda a, b: a != b,
@@ -66,7 +66,13 @@ def _avaliar_op(op: str, v1, v2):
         ">=": lambda a, b: a >= b,
     }
     if op in ops:
-        return ops[op](v1, v2)
+        resultado = ops[op](v1, v2)
+        # As comparações devolvem o tipo bool do Python (True/False). O CPU P3
+        # e o resto do pipeline operam apenas com inteiros, pelo que o valor
+        # booleano é convertido para 0/1 antes de seguir para o gerador.
+        if isinstance(resultado, bool):
+            return int(resultado)
+        return resultado
     raise ValueError(f"Operação desconhecida: {op}")
 
 
@@ -314,8 +320,31 @@ class MOCPCodeOptimiser:
         Reutiliza o resultado de uma expressão já calculada com os mesmos
         operandos e versões de variáveis, evitando recalcular.
         Normaliza operações comutativas (a+b == b+a) para maior cobertura.
+
+        Esta implementação é um CSE *local por bloco básico*: o mapa de
+        expressões vistas é invalidado em cada fronteira de bloco básico
+        (labels, saltos goto/ifFalse, return/halt) e também em instruções
+        com efeitos colaterais (chamadas, escritas em memória e I/O).
+        Esta restrição garante correção em presença de controlo de fluxo:
+        nunca substitui uma expressão por um temporário que só foi
+        calculado num caminho alternativo (por exemplo, num ramo se/senao).
         """
         ops_binarias = {"+", "-", "*", "/", "%", "==", "!=", "<", "<=", ">", ">="}
+
+        # Fronteiras de bloco básico: invalidam o mapa de expressões vistas.
+        #   - 'label', 'goto', 'ifFalse', 'return', 'halt' são fronteiras de
+        #     controlo de fluxo (o próximo bloco pode ser alcançado por outro
+        #     caminho onde os temporários não foram calculados).
+        #   - 'call', 'param' separam blocos por causa de potenciais efeitos
+        #     laterais (uma chamada pode alterar memória global).
+        #   - '[]=', 'write', 'writec', 'writev', 'writes' modificam memória
+        #     ou produzem I/O observável.
+        ops_fronteira_bloco = {
+            "label", "goto", "ifFalse", "return", "halt",
+            "call", "param",
+            "[]=", "write", "writec", "writev", "writes",
+        }
+
         expressoes_vistas: Dict[Tuple, str] = {}
         versao_vars: Dict[str, int] = {}
         resultado = []
@@ -336,6 +365,17 @@ class MOCPCodeOptimiser:
             arg1 = q.get("arg1")
             arg2 = q.get("arg2")
             res  = q.get("res")
+
+            # Em fronteiras de bloco básico descartamos o conhecimento
+            # acumulado: as expressões vistas até aqui podem não ser válidas
+            # no próximo bloco (que pode ser alcançado por outro caminho ou
+            # ter o seu estado alterado por efeitos laterais).
+            if op in ops_fronteira_bloco:
+                expressoes_vistas.clear()
+                resultado.append(q)
+                if res and isinstance(res, str):
+                    versao_vars[res] = versao_vars.get(res, 0) + 1
+                continue
 
             if op in ops_binarias and res:
                 k = chave(op, arg1, arg2)

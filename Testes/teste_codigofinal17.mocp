@@ -1,0 +1,8 @@
+/* Geração de Código Final — leitura de inteiro e utilização */
+/* Lê x e escreve x*2. Com input 6, output esperado: 12. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro x = ler();
+    escrever(x * 2);
+}

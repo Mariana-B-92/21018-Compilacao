@@ -1,0 +1,10 @@
+/* Geração de Código Final — saídas (escrever, escreverc, escrevers) */
+/* escrevers imprime a string, escrever o inteiro (com mudança de linha) e */
+/* escreverc o caractere ASCII (65 = 'A'). Output esperado: valor=42 e depois A. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    escrevers("valor=");
+    escrever(42);
+    escreverc(65);
+}

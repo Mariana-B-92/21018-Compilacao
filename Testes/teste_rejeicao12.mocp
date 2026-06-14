@@ -1,0 +1,7 @@
+/*  Escrita: Uso Adequado */
+/* Regra: Use write() para variáveis simples, writev() para vetores, e writes() para strings. -inválido */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    escrever("abc");
+}

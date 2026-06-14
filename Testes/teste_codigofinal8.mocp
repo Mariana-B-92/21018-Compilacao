@@ -1,0 +1,10 @@
+/* Geração de Código Final — operador lógico OU (||) */
+/* Avaliação curto-circuitada no código P3 gerado. */
+/* Output esperado: 1, 0. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro a = 5, z = 0;
+    se (a > 0 || z > 0) { escrever(1); } senao { escrever(0); }
+    se (z > 0 || z > 0) { escrever(1); } senao { escrever(0); }
+}

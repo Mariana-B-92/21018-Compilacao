@@ -1,0 +1,13 @@
+/* Geração de Código Final — variáveis (valor por omissão e inicialização) */
+/* a sem inicialização vale 0; b = 7; c = 2*b = 14. */
+/* Output esperado: 0, 7, 14. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro a;
+    inteiro b = 7;
+    inteiro c = 2 * b;
+    escrever(a);
+    escrever(b);
+    escrever(c);
+}

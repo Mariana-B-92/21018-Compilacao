@@ -1,0 +1,14 @@
+/* Preservação de Ciclos */
+/* O otimizador deve manter o ciclo intacto: */
+/* as variáveis i e soma mudam a cada iteração e não podem ser eliminadas. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro i;
+    inteiro soma;
+    soma = 0;
+    para (i = 0; i < 5; i = i + 1) {
+        soma = soma + i;
+    }
+    escrever(soma);
+}

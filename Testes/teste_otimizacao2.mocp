@@ -1,0 +1,14 @@
+/* Eliminação de Código Morto */
+/* As variáveis y e z são calculadas mas nunca usadas. */
+/* O otimizador deve eliminá-las do TAC otimizado. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro x;
+    inteiro y;
+    inteiro z;
+    x = 42;
+    y = x + 10;
+    z = y * 2;
+    escrever(x);
+}

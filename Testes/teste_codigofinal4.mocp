@@ -1,0 +1,11 @@
+/* Geração de Código Final — operador menor ou igual (<=) */
+/* Tratamento das condições Z e N após o CMP. */
+/* Output esperado: 1, 1, 0. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro a = 3, b = 5;
+    se (a <= b) { escrever(1); } senao { escrever(0); }
+    se (a <= a) { escrever(1); } senao { escrever(0); }
+    se (b <= a) { escrever(1); } senao { escrever(0); }
+}

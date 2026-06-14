@@ -19,6 +19,20 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         self.declared_prototypes = set()
         self.errors = []
         self.symbol_table = MOCPSymbolTable()
+        # Flag que indica se o programa usa o tipo 'real' em qualquer lado
+        # (declaracoes, parametros, retornos, literais ou casts). Esta
+        # informacao e utilizada pela geracao de codigo P3, uma vez que o
+        # CPU P3 nao tem unidade de virgula flutuante e nao suporta o tipo
+        # real. A flag e marcada pelo metodo _track_real_usage.
+        self.has_real_type = False
+
+    def _track_real_usage(self, type_str):
+        """
+        Marca a flag has_real_type se o tipo recebido corresponder ao tipo 'real'.
+        Aceita tanto 'real' como tipos compostos como 'real[]'.
+        """
+        if type_str and "real" in str(type_str):
+            self.has_real_type = True
 
     # ==========================================
     # 0. MÉTODOS AUXILIARES GERAIS
@@ -102,7 +116,12 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
 
         defined = self.symbol_table.define(
             MAP_C_MOCP.get("main"),
-            { "type": MAP_C_MOCP.get("void"), "is_function": True }
+            {
+                "type": MAP_C_MOCP.get("void"),
+                "is_function": True,
+                "param_types": [],
+                "is_defined": False,
+            }
         )
 
         if not defined:
@@ -118,6 +137,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         function_name = context.IDENTIFIER().getText()
         function_type = context.returnType().getText()
+        self._track_real_usage(function_type)
         self.declared_prototypes.add(function_name)
 
         # Recolhe os tipos dos parâmetros, se existirem e não forem (void)
@@ -130,6 +150,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
                     param_type = param.type_().getText()
                     is_array = param.LBRACKET() is not None
                     param_types.append((param_type, is_array))
+                    self._track_real_usage(param_type)
 
         defined = self.symbol_table.define(
             function_name,
@@ -162,11 +183,15 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         if main_name not in self.declared_prototypes:
             self._register_error(context, MOCPErrorMessages.MISSING_MAIN)
 
-        # Verifica se 'principal' já foi definida anteriormente; caso contrário, regista-a
+        # Verifica se 'principal' já foi definida anteriormente; caso contrário,
+        # atualiza o símbolo do protótipo para marcar como definida. Se o protótipo
+        # ainda não existir (caso de erro: definição sem protótipo), regista-a com define().
         symbol = self.symbol_table.resolve(main_name)
 
         if symbol and symbol.get("is_defined", False):
             self._register_error(context, MOCPErrorMessages.DECLARED_MAIN)
+        elif symbol:
+            self.symbol_table.update(main_name, {"is_defined": True})
         else:
             self.symbol_table.define(
                 main_name,
@@ -190,6 +215,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         function_name = context.IDENTIFIER().getText()
         self.current_function_type = context.returnType().getText()
+        self._track_real_usage(self.current_function_type)
 
         # Verifica se o protótipo da função foi previamente declarado
         if function_name not in self.declared_prototypes:
@@ -210,17 +236,21 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
                     param_type = param.type_().getText()
                     is_array = param.LBRACKET() is not None
                     param_types.append((param_type, is_array))
+                    self._track_real_usage(param_type)
 
-        # Atualiza a definição da função na tabela de símbolos
-        self.symbol_table.define(
-            function_name,
-            {
-                "type": self.current_function_type,
-                "is_function": True,
-                "param_types": param_types,
-                "is_defined": True,
-            },
-        )
+        # Atualiza o símbolo do protótipo com a informação completa da definição.
+        # Se o protótipo não existir (erro reportado acima), regista-a com define() para
+        # evitar uma cascata de erros relacionados com a função.
+        function_attributes = {
+            "type": self.current_function_type,
+            "is_function": True,
+            "param_types": param_types,
+            "is_defined": True,
+        }
+        if symbol:
+            self.symbol_table.update(function_name, function_attributes)
+        else:
+            self.symbol_table.define(function_name, function_attributes)
 
         # Visita os parâmetros e o bloco da função num novo âmbito
         self.symbol_table.enter_scope()
@@ -251,6 +281,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         Regra: type variableList SEMI_COLON
         """
         self.current_declaration_type = context.type_().getText()
+        self._track_real_usage(self.current_declaration_type)
         self.visit(context.variableList())
         self.current_declaration_type = None
         return None
@@ -346,6 +377,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         parameter_type = context.type_().getText()
         parameter_name = context.IDENTIFIER().getText()
         is_array = context.LBRACKET() is not None
+        self._track_real_usage(parameter_type)
         
         # Regista o parâmetro na tabela de símbolos do âmbito atual
         defined = self.symbol_table.define(
@@ -696,6 +728,7 @@ class MOCPSemanticAnalyzer(MOCPVisitor):
         """
         if context.type_():
             target_type = context.type_().getText()
+            self._track_real_usage(target_type)
 
             # Cast só é permitido para tipos numéricos
             if target_type not in [MAP_C_MOCP.get("int"), MAP_C_MOCP.get("double")]:

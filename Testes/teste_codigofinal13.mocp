@@ -1,0 +1,13 @@
+/* Geração de Código Final — aritmética (+ - * / %) */
+/* Com a = 12: a+20=32, a-5=7, a*2=24, a/5=2, a%5=2. */
+/* Output esperado: 32, 7, 24, 2, 2. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro a = 12;
+    escrever(a + 20);
+    escrever(a - 5);
+    escrever(a * 2);
+    escrever(a / 5);
+    escrever(a % 5);
+}

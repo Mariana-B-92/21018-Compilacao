@@ -1,0 +1,10 @@
+/* Geração de Código Final — operador de igualdade (==) */
+/* O gerador deve emitir CMP seguido de salto condicional, materializando */
+/* 1 quando os valores são iguais e 0 caso contrário. Output esperado: 1, 0. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro a = 5, b = 5, c = 3;
+    se (a == b) { escrever(1); } senao { escrever(0); }
+    se (a == c) { escrever(1); } senao { escrever(0); }
+}

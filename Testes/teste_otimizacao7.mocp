@@ -1,0 +1,21 @@
+/* CSE seguro em presença de controlo de fluxo */
+/* A expressão a+b aparece em dois ramos de um se/senao. */
+/* O CSE não deve reutilizar o resultado entre ramos diferentes, */
+/* pois o temporário de um ramo não está calculado no outro caminho. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro a;
+    inteiro b;
+    inteiro x;
+    inteiro y;
+    a = ler();
+    b = ler();
+    se (a > 0) {
+        x = a + b;
+        escrever(x);
+    } senao {
+        y = a + b;
+        escrever(y);
+    }
+}

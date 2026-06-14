@@ -1,0 +1,17 @@
+/* Eliminação de Subexpressões Comuns (CSE) */
+/* A expressão a + b é calculada duas vezes com os mesmos operandos. */
+/* O otimizador deve calcular apenas uma vez e reutilizar o resultado. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro a;
+    inteiro b;
+    inteiro x;
+    inteiro y;
+    a = 3;
+    b = 4;
+    x = a + b;
+    y = a + b;
+    escrever(x);
+    escrever(y);
+}

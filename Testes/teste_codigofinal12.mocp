@@ -1,0 +1,13 @@
+/* Geração de Código Final — ciclo 'para' com leitura de entrada */
+/* Lê o limite x e o salto y; itera de 1 até x somando y a cada passo. */
+/* Com input 5 e 2, output esperado: 1, 3, 5. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro x = ler();
+    inteiro y = ler();
+    inteiro i;
+    para (i = 1; i <= x; i = i + y) {
+        escrever(i);
+    }
+}

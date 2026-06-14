@@ -1,0 +1,13 @@
+/* Geração de Código Final — chamada de função (parâmetros e retorno) */
+/* soma(7, 5) acede aos parâmetros em M[R5+3] e M[R5+4] e devolve a+b em R1. */
+/* Output esperado: 12. */
+inteiro soma(inteiro, inteiro);
+vazio principal(vazio);
+
+inteiro soma(inteiro a, inteiro b) {
+    retornar a + b;
+}
+
+vazio principal(vazio) {
+    escrever(soma(7, 5));
+}

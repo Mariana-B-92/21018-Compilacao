@@ -1,0 +1,10 @@
+/* Geração de Código Final — operador de diferença (!=) */
+/* CMP seguido de salto condicional; produz 1 quando diferentes e 0 quando */
+/* iguais. Output esperado: 0, 1. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro a = 5, b = 5, c = 3;
+    se (a != b) { escrever(1); } senao { escrever(0); }
+    se (a != c) { escrever(1); } senao { escrever(0); }
+}

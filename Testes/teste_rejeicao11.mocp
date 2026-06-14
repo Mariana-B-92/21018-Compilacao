@@ -1,0 +1,8 @@
+/* Leitura de Vetor (Fluxo de Leitura) */
+/* Regra: Para ler um vetor de inteiros ou reais, deve ser usado um ciclo (o read() lê apenas um valor por vez). -inválido */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro v[5];
+    v = ler();
+}

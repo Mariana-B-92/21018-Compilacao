@@ -1,0 +1,11 @@
+/* Geração de Código Final — ciclo 'para' (for) */
+/* O ciclo deve iterar de 1 a 5 e escrever cada valor. */
+/* Output esperado: 1, 2, 3, 4, 5. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro i;
+    para (i = 1; i <= 5; i = i + 1) {
+        escrever(i);
+    }
+}

@@ -1,0 +1,14 @@
+/* Constant Folding e Propagação de Cópias */
+/* O otimizador deve calcular 5 + 10 = 15 em tempo de compilação */
+/* e escrever diretamente o valor 15, sem temporários intermédios. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro a;
+    inteiro b;
+    inteiro c;
+    a = 5;
+    b = 10;
+    c = a + b;
+    escrever(c);
+}

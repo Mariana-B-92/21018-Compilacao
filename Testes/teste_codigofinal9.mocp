@@ -1,0 +1,10 @@
+/* Geração de Código Final — negação lógica (!) */
+/* Inverte o valor booleano em R1. */
+/* Output esperado: 1, 0. */
+vazio principal(vazio);
+
+vazio principal(vazio) {
+    inteiro a = 5;
+    se (!(a > 10)) { escrever(1); } senao { escrever(0); }
+    se (!(a > 0))  { escrever(1); } senao { escrever(0); }
+}

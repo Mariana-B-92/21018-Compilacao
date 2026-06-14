@@ -46,15 +46,21 @@ class MOCPErrorListener(ErrorListener):
         # com o tipo FORBIDDEN_KEYWORD. Tratamo-las imediatamente como erros léxicos.
         if token_type_name == "FORBIDDEN_KEYWORD":
             suggestion_word = MAP_C_MOCP.get(symbol_text)
+            tipos_proibidos = {"char", "float", "long", "short", "signed", "unsigned"}
             if suggestion_word:
                 message = (
                     f"[Erro Léxico] Palavra-chave de C proibida '{symbol_text}' "
                     f"(linha {line}, coluna {column}). Use '{suggestion_word}'."
                 )
+            elif symbol_text in tipos_proibidos:
+                message = (
+                    f"[Erro Léxico] Tipo de C proibido '{symbol_text}' "
+                    f"(linha {line}, coluna {column}). Apenas existem os tipos 'inteiro' e 'real'."
+                )
             else:
                 message = (
                     f"[Erro Léxico] Palavra-chave de C proibida '{symbol_text}' "
-                    f"(linha {line}, coluna {column}). Apenas existem os tipos 'inteiro' e 'real'."
+                    f"(linha {line}, coluna {column}). Esta palavra não tem equivalente em MOCP."
                 )
             self._lex_error_lines.add(line)
             self._register(message)

@@ -1,0 +1,13 @@
+/* Chamadas de Função vs. Acesso a Vetores */
+/* Regra: Uma chamada de função deve usar parênteses; O acesso a vetor deve usar colchetes. -inválido */
+inteiro identidade(inteiro);
+vazio principal(vazio);
+
+inteiro identidade(inteiro x) { retornar x; }
+
+vazio principal(vazio) {
+    inteiro v[5];
+
+    identidade[0];
+    v(0);
+}

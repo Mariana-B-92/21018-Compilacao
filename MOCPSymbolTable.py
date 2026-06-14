@@ -30,6 +30,23 @@ class MOCPSymbolTable:
         self.scopes[-1][name] = attributes
         return True
 
+    def update(self, name, attributes):
+        """
+        Atualiza os atributos de um símbolo já existente, procurando-o do escopo
+        mais interno para o mais externo (mesma ordem que resolve()). Os atributos
+        fornecidos são fundidos com os existentes (os novos sobrepõem-se).
+        Devolve True se o símbolo foi encontrado e atualizado, False caso contrário.
+
+        Esta operação é necessária para casos como a passagem de protótipo para
+        definição de função, onde o símbolo já existe e precisa de ter atributos
+        como 'is_defined' atualizados de False para True.
+        """
+        for scope in reversed(self.scopes):
+            if name in scope:
+                scope[name].update(attributes)
+                return True
+        return False
+
     def resolve(self, name):
         """
         Procura um símbolo do escopo mais interno para o mais externo.

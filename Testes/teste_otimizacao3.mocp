@@ -1,0 +1,19 @@
+/* Eliminação de Código Inatingível */
+/* As instruções após 'retornar' nunca podem ser executadas. */
+/* O otimizador deve removê-las do TAC otimizado, mantendo apenas */
+/* o 'return 42'. A função obter() é preservada porque é chamada em principal. */
+inteiro obter(vazio);
+vazio principal(vazio);
+
+inteiro obter(vazio) {
+    retornar 42;
+    inteiro x;
+    x = 99;
+    escrever(x);
+}
+
+vazio principal(vazio) {
+    inteiro r;
+    r = obter();
+    escrever(r);
+}

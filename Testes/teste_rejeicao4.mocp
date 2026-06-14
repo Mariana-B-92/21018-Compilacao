@@ -1,0 +1,14 @@
+/* Inicialização de Variáveis com tipo incompatível */
+/* Regra: Não é permitido inicializar um 'inteiro' com um valor 'real' sem cast explícito. - inválido */
+inteiro identidade(inteiro);
+vazio principal(vazio);
+
+inteiro x = 3.14;
+
+inteiro identidade(inteiro k) {
+    retornar k;
+}
+
+vazio principal(vazio) {
+    escrever(x);
+}

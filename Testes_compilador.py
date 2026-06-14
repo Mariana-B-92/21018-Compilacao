@@ -605,7 +605,198 @@ class TestCodeOptimiser(unittest.TestCase):
         self.assertLessEqual(len(ops_soma), 1,
                              f"CSE devia eliminar operação duplicada. TAC: {tac}")
 
+# =============================================================================
+# 4. Testes de Geração de Código Final P3 Assembly
+# =============================================================================
 
+from MOCPCodeGenerator_P3 import code_generator_p3
+
+
+def _gerar_p3(codigo: str):
+    """
+    Faz parse + semântica + geração de TAC + otimização + geração P3.
+    Devolve (codigo_assembly, has_real_type, erros).
+    """
+    tree, el = _parse(codigo)
+    if el.errors:
+        return None, False, el.errors
+    analisador = MOCPSemanticAnalyzer()
+    analisador.visit(tree)
+    if analisador.errors:
+        return None, analisador.has_real_type, analisador.errors
+    if analisador.has_real_type:
+        return None, True, []
+    gerador = MOCPIntermediateCodeGenerator(analisador.symbol_table)
+    gerador.visit(tree)
+    quadruplos_otimizados = optimizar_completo(gerador.quadruplos)
+    codigo_as = code_generator_p3(quadruplos_otimizados)
+    return codigo_as, False, []
+
+
+class TestCodeGeneratorP3(unittest.TestCase):
+
+    def test_recusa_real_em_declaracao(self):
+        """Declarar uma variável como real deve activar has_real_type."""
+        codigo = """
+        vazio principal(vazio);
+        vazio principal(vazio) {
+            real x = 3.14;
+            inteiro k = (inteiro) x;
+            escrever(k);
+        }
+        """
+        _, has_real, erros = _gerar_p3(codigo)
+        self.assertEqual(erros, [], f"Esperava sem erros, obteve: {erros}")
+        self.assertTrue(has_real, "Variável real devia activar has_real_type")
+
+    def test_recusa_real_em_retorno_de_funcao(self):
+        """Função com tipo de retorno real deve activar has_real_type."""
+        codigo = """
+        real raiz();
+        vazio principal(vazio);
+        real raiz() {
+            retornar 1.5;
+        }
+        vazio principal(vazio) {
+            real r = raiz();
+            inteiro k = (inteiro) r;
+            escrever(k);
+        }
+        """
+        _, has_real, erros = _gerar_p3(codigo)
+        self.assertEqual(erros, [], f"Esperava sem erros, obteve: {erros}")
+        self.assertTrue(has_real, "Retorno real devia activar has_real_type")
+
+    def test_recusa_real_em_cast(self):
+        """Cast (real) deve activar has_real_type."""
+        codigo = """
+        vazio principal(vazio);
+        vazio principal(vazio) {
+            inteiro a = 5;
+            real r = (real) a;
+            inteiro k = (inteiro) r;
+            escrever(k);
+        }
+        """
+        _, has_real, erros = _gerar_p3(codigo)
+        self.assertEqual(erros, [], f"Esperava sem erros, obteve: {erros}")
+        self.assertTrue(has_real, "Cast (real) devia activar has_real_type")
+
+    def test_aceita_programa_so_inteiros(self):
+        """Programa só com inteiros não activa has_real_type e gera assembly."""
+        codigo = """
+        vazio principal(vazio);
+        vazio principal(vazio) {
+            inteiro x = 5;
+            inteiro y = 10;
+            escrever(x + y);
+        }
+        """
+        code, has_real, erros = _gerar_p3(codigo)
+        self.assertEqual(erros, [], f"Esperava sem erros, obteve: {erros}")
+        self.assertFalse(has_real, "Programa só com inteiros não devia activar has_real_type")
+        self.assertIsNotNone(code, "Esperava código P3 gerado")
+
+    def test_estrutura_basica_do_assembly(self):
+        """O assembly contém as secções obrigatórias do template P3."""
+        codigo = """
+        vazio principal(vazio);
+        vazio principal(vazio) {
+            escrever(42);
+        }
+        """
+        code, _, erros = _gerar_p3(codigo)
+        self.assertIsNotNone(code, f"Erros: {erros}")
+        self.assertIn("ORIG     0000h", code, "Falta 'ORIG 0000h' (zona de código)")
+        self.assertIn("ORIG     8000h", code, "Falta 'ORIG 8000h' (zona de dados)")
+        self.assertIn("CALL     principal", code, "Falta CALL inicial à principal")
+        self.assertIn("FIM:", code, "Falta label FIM (loop de halt)")
+
+    def test_prologo_e_epilogo_das_funcoes(self):
+        """Funções têm prólogo PUSH R5; MOV R5, SP e epílogo MOV SP, R5; POP R5; RET."""
+        codigo = """
+        inteiro fact(inteiro);
+        vazio principal(vazio);
+        inteiro fact(inteiro k) {
+            se (k <= 1) {
+                retornar 1;
+            } senao {
+                retornar k * fact(k - 1);
+            }
+        }
+        vazio principal(vazio) {
+            escrever(fact(5));
+        }
+        """
+        code, _, erros = _gerar_p3(codigo)
+        self.assertIsNotNone(code, f"Erros: {erros}")
+        self.assertIn("PUSH     R5", code, "Falta 'PUSH R5' no prólogo")
+        self.assertIn("MOV      R5, SP", code, "Falta 'MOV R5, SP' no prólogo")
+        self.assertIn("MOV      SP, R5", code, "Falta 'MOV SP, R5' no epílogo")
+        self.assertIn("POP      R5", code, "Falta 'POP R5' no epílogo")
+        self.assertIn("RET", code, "Falta 'RET' no epílogo")
+
+    def test_parametros_acedidos_via_FP_mais_3(self):
+        """param1 deve ser acedido via M[R5+3] (FP+3), não FP+2."""
+        codigo = """
+        inteiro fact(inteiro);
+        vazio principal(vazio);
+        inteiro fact(inteiro k) {
+            se (k <= 1) {
+                retornar 1;
+            } senao {
+                retornar k * fact(k - 1);
+            }
+        }
+        vazio principal(vazio) {
+            escrever(fact(5));
+        }
+        """
+        code, _, erros = _gerar_p3(codigo)
+        self.assertIsNotNone(code, f"Erros: {erros}")
+        self.assertIn("M[R5+3]", code, "param1 devia ser acedido via M[R5+3]")
+        self.assertNotIn("M[R5+2]", code, "M[R5+2] é o endereço de retorno, não pode ser usado para parâmetros")
+
+    def test_mul_recupera_LSW(self):
+        """Após 'MUL R1, R2' deve haver 'MOV R1, R2' para recuperar o LSW."""
+        codigo = """
+        inteiro multiplica(inteiro, inteiro);
+        vazio principal(vazio);
+        inteiro multiplica(inteiro a, inteiro b) {
+            retornar a * b;
+        }
+        vazio principal(vazio) {
+            escrever(multiplica(3, 4));
+        }
+        """
+        code, _, erros = _gerar_p3(codigo)
+        self.assertIsNotNone(code, f"Erros: {erros}")
+        lines = code.split('\n')
+        encontrou_mul = False
+        for i, line in enumerate(lines):
+            if "MUL" in line and "R1, R2" in line:
+                janela = " ".join(lines[i + 1:i + 3])
+                self.assertIn("MOV", janela, "Falta MOV após MUL para recuperar o LSW")
+                self.assertIn("R1, R2", janela, "MOV deveria copiar R2 (LSW) para R1")
+                encontrou_mul = True
+                break
+        self.assertTrue(encontrou_mul, "Esperava 'MUL R1, R2' no código gerado")
+
+    def test_helpers_io_sao_sempre_emitidos(self):
+        """As subrotinas auxiliares de I/O são incluídas no output."""
+        codigo = """
+        vazio principal(vazio);
+        vazio principal(vazio) {
+            escrever(1);
+        }
+        """
+        code, _, erros = _gerar_p3(codigo)
+        self.assertIsNotNone(code, f"Erros: {erros}")
+        self.assertIn("WRITE:", code, "Falta subrotina WRITE")
+        self.assertIn("WRITES:", code, "Falta subrotina WRITES")
+        self.assertIn("READ:", code, "Falta subrotina READ")
+        self.assertIn("WRITEV:", code, "Falta subrotina WRITEV")
+        
 # =============================================================================
 # Ponto de entrada
 # =============================================================================
